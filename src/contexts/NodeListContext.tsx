@@ -132,8 +132,13 @@ export const NodeListProvider: React.FC<{ children: React.ReactNode }> = ({
           weight: n.weight ?? 0,
           price: n.price ?? 0,
           tags: n.tags ?? "",
-          miner_configured: Boolean(n.miner_configured),
-          miner_controllable: Boolean(n.miner_controllable),
+          // 缺字段必须保持缺字段。收成 false 会让「上报没带到」和「明确不可控」变成同一种机器。
+          ...(typeof n.miner_configured === "boolean"
+            ? { miner_configured: n.miner_configured }
+            : {}),
+          ...(typeof n.miner_controllable === "boolean"
+            ? { miner_controllable: n.miner_controllable }
+            : {}),
           billing_cycle: n.billing_cycle ?? 0,
           currency: n.currency ?? "",
           group: n.group ?? "",

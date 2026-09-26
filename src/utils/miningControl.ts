@@ -66,16 +66,18 @@ export function isConfiguredMiner(
 }
 
 /**
- * 老探针不报 miner_controllable，缺省 false 不能把正在挖或打过标签的矿机按钮藏掉。
- * 只有新探针明确「配过矿、但不能控」时才换成不可远程启停。
+ * 老探针不报这两个字段时，缺字段不能当成 false，正在挖或打过标签的矿机仍给按钮。
+ * 只有新探针明确「已配置且不可控」时才换成不可远程启停。
  */
 export function showsMiningControls(
   info: MinerIdentity,
   hasLiveMining: boolean,
   hasHistoryMetrics: boolean,
 ): boolean {
-  if (info.miner_controllable) return true;
-  if (info.miner_configured) return false;
+  if (info.miner_controllable === true) return true;
+  // 只有新探针明确报了「已配置且不可控」才藏按钮。
+  // 字段缺失不是 false：基础信息没带到时，仍按在挖、曲线和标签兜底。
+  if (info.miner_configured === true && info.miner_controllable === false) return false;
   return hasLiveMining || hasHistoryMetrics || hasMinerTag(info.tags);
 }
 
