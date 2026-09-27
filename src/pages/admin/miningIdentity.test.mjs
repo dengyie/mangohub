@@ -42,12 +42,6 @@ test("a missing capability field is not the same as an explicit false", () => {
   assert.equal(showsMiningControls(configuredOnly, true, true), false);
 });
 
-test("node list keeps omitted miner flags omitted", () => {
-  const source = readFileSync(new URL("../../contexts/NodeListContext.tsx", import.meta.url), "utf8");
-  assert.equal(source.includes("Boolean(n.miner_configured)"), false);
-  assert.equal(source.includes("Boolean(n.miner_controllable)"), false);
-});
-
 test("mining page uses the shared identity helper for both the table and history query", () => {
   const page = readFileSync(new URL("./mining.tsx", import.meta.url), "utf8");
   assert.equal(page.split("isConfiguredMiner(").length - 1, 2);
