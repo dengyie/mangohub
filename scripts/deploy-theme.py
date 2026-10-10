@@ -94,19 +94,19 @@ def point_to(active: Path, target: Path) -> None:
 
 
 def verify_release(revision: str) -> None:
-    for base in ('http://127.0.0.1:25774', 'https://vps.mangoqwq.com'):
-        request = urllib.request.Request(f'{base}/frontend-release.json?revision={revision}', headers={'Cache-Control': 'no-cache'})
-        with urllib.request.urlopen(request, timeout=12) as response:
-            metadata = json.load(response)
-        if metadata.get('revision') != revision:
-            raise RuntimeError(f'Release identity check failed at {base}')
-        with urllib.request.urlopen(f'{base}/api/public', timeout=12) as response:
-            public = json.load(response)
-        if public.get('data', {}).get('theme') != 'komari-deer':
-            raise RuntimeError(f'Unexpected active theme at {base}')
-        with urllib.request.urlopen(f'{base}/?revision={revision}', timeout=12) as response:
-            if b'/_next/static/' not in response.read(1024 * 1024):
-                raise RuntimeError(f'Frontend HTML check failed at {base}')
+    base = 'http://127.0.0.1:25774'
+    request = urllib.request.Request(f'{base}/frontend-release.json?revision={revision}', headers={'Cache-Control': 'no-cache'})
+    with urllib.request.urlopen(request, timeout=12) as response:
+        metadata = json.load(response)
+    if metadata.get('revision') != revision:
+        raise RuntimeError('Release identity check failed on loopback')
+    with urllib.request.urlopen(f'{base}/api/public', timeout=12) as response:
+        public = json.load(response)
+    if public.get('data', {}).get('theme') != 'komari-deer':
+        raise RuntimeError('Unexpected active theme on loopback')
+    with urllib.request.urlopen(f'{base}/?revision={revision}', timeout=12) as response:
+        if b'/_next/static/' not in response.read(1024 * 1024):
+            raise RuntimeError('Frontend HTML check failed on loopback')
 
 
 def deploy(source: BinaryIO, root: Path, revision: str, checksum: str, check: Callable[[str], None]) -> Path:

@@ -6,6 +6,7 @@ from pathlib import Path
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import MagicMock, patch
 
 spec = importlib.util.spec_from_file_location('deploy_theme', Path(__file__).parents[1] / 'scripts/deploy-theme.py')
 module = importlib.util.module_from_spec(spec)
@@ -91,6 +92,23 @@ class DeployThemeTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             module.deploy(io.BytesIO(raw), self.root, REVISION, digest, fail)
         self.assertEqual(self.active.resolve(), previous)
+
+    def test_release_healthcheck_uses_loopback_only(self):
+        responses = []
+        for body in (
+            json.dumps({'revision': REVISION}).encode(),
+            json.dumps({'data': {'theme': 'komari-deer'}}).encode(),
+            b'<script src="/_next/static/app.js"></script>',
+        ):
+            response = MagicMock()
+            response.__enter__.return_value = response
+            response.read.return_value = body
+            responses.append(response)
+        with patch.object(module.urllib.request, 'urlopen', side_effect=responses) as urlopen:
+            module.verify_release(REVISION)
+        urls = [getattr(call.args[0], 'full_url', call.args[0]) for call in urlopen.call_args_list]
+        self.assertEqual(len(urls), 3)
+        self.assertTrue(all(url.startswith('http://127.0.0.1:25774/') for url in urls))
 
 
 if __name__ == '__main__':

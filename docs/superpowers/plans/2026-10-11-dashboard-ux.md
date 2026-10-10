@@ -51,4 +51,4 @@ All tasks, including the user visual amendment, verified on 2026-10-11. See [val
 - [x] Restore browser-local appearance selection in ThemeContext and add a Sun/Moon control to NavBar. Extend the paper dark palette; repaint canvas after theme resolution.
 - [x] Add fixed-grid country hit detection, hover pause/resume and a bounded country node detail panel in PixelGlobe/NodeMapView; preserve manual pause and reduced motion.
 - [x] Add frontend deploy workflow and a restricted archive receiver with validation, SHA identity, atomic switch, retained rollback and health checks; document installation and credentials by name only.
-- [x] Run tests/types/build and browser day/night persistence, hover lifecycle and responsive checks. Commit and rebase on current origin/main, publish GitHub, configure deployment key, run CI and verify production SHA and interactions.
+- [ ] Run tests/types/build and browser day/night persistence, hover lifecycle and responsive checks. Commit and rebase on current origin/main, publish GitHub, configure deployment key, run CI and verify production SHA and interactions.
