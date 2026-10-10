@@ -67,30 +67,51 @@ func init() {
 		Returns: "{ success: boolean }",
 	})
 
-	// 跨节点互访申请 SSH 凭据（允许已认证的 Client 节点或 Admin 申请）
-	RegisterWithGroupAndMeta("requestSSHTicket", rpc.RoleClient, clientRequestSSHTicket, &rpc.MethodMeta{
-		Name:        "client:requestSSHTicket",
-		Summary:     "Request SSH access ticket to target cloud host",
-		Description: "Request authorization to SSH into another client device",
-		Params: []rpc.ParamMeta{
-			{Name: "source_client_uuid", Type: "string", Description: "Source client UUID (optional if calling via client token)"},
-			{Name: "target_client_uuid", Type: "string", Description: "Target client UUID to access"},
-			{Name: "duration_seconds", Type: "number", Description: "Desired duration in seconds (default 3600, max 86400)"},
-			{Name: "target_user", Type: "string", Description: "Target login username (default ubuntu/root)"},
-		},
-		Returns: "{ ticket: SSHTicket, private_key: string, target_info: object }",
-	})
+		// 跨节点互访申请 SSH 凭据（允许已认证的 Client 节点或 Admin 申请）
+		RegisterWithGroupAndMeta("requestSSHTicket", rpc.RoleClient, clientRequestSSHTicket, &rpc.MethodMeta{
+			Name:        "client:requestSSHTicket",
+			Summary:     "Request SSH access ticket to target cloud host",
+			Description: "Request authorization to SSH into another client device",
+			Params: []rpc.ParamMeta{
+				{Name: "source_client_uuid", Type: "string", Description: "Source client UUID (optional if calling via client token)"},
+				{Name: "target_client_uuid", Type: "string", Description: "Target client UUID to access"},
+				{Name: "duration_seconds", Type: "number", Description: "Desired duration in seconds (default 3600, max 86400)"},
+				{Name: "target_user", Type: "string", Description: "Target login username (default ubuntu/root)"},
+			},
+			Returns: "{ ticket: SSHTicket, private_key: string, target_info: object }",
+		})
+		RegisterWithGroupAndMeta("requestSSHTicket", rpc.RoleAdmin, clientRequestSSHTicket, &rpc.MethodMeta{
+			Name:        "admin:requestSSHTicket",
+			Summary:     "Request SSH access ticket to target cloud host by Admin",
+			Description: "Admin request authorization to SSH into a client device",
+			Params: []rpc.ParamMeta{
+				{Name: "source_client_uuid", Type: "string", Description: "Source client UUID (optional)"},
+				{Name: "target_client_uuid", Type: "string", Description: "Target client UUID to access"},
+				{Name: "duration_seconds", Type: "number", Description: "Desired duration in seconds (default 3600, max 86400)"},
+				{Name: "target_user", Type: "string", Description: "Target login username (default ubuntu/root)"},
+			},
+			Returns: "{ ticket: SSHTicket, private_key: string, target_info: object }",
+		})
 
-	// 吊销互访 Ticket
-	RegisterWithGroupAndMeta("revokeSSHTicket", rpc.RoleClient, clientRevokeSSHTicket, &rpc.MethodMeta{
-		Name:        "client:revokeSSHTicket",
-		Summary:     "Revoke an active SSH access ticket",
-		Description: "Revoke ticket and remove public key on target client immediately",
-		Params: []rpc.ParamMeta{
-			{Name: "ticket_id", Type: "string", Description: "Ticket ID to revoke"},
-		},
-		Returns: "{ success: boolean }",
-	})
+		// 吊销互访 Ticket
+		RegisterWithGroupAndMeta("revokeSSHTicket", rpc.RoleClient, clientRevokeSSHTicket, &rpc.MethodMeta{
+			Name:        "client:revokeSSHTicket",
+			Summary:     "Revoke an active SSH access ticket",
+			Description: "Revoke ticket and remove public key on target client immediately",
+			Params: []rpc.ParamMeta{
+				{Name: "ticket_id", Type: "string", Description: "Ticket ID to revoke"},
+			},
+			Returns: "{ success: boolean }",
+		})
+		RegisterWithGroupAndMeta("revokeSSHTicket", rpc.RoleAdmin, clientRevokeSSHTicket, &rpc.MethodMeta{
+			Name:        "admin:revokeSSHTicket",
+			Summary:     "Revoke an active SSH access ticket by Admin",
+			Description: "Admin revoke ticket and remove public key on target client immediately",
+			Params: []rpc.ParamMeta{
+				{Name: "ticket_id", Type: "string", Description: "Ticket ID to revoke"},
+			},
+			Returns: "{ success: boolean }",
+		})
 }
 
 func adminListSSHKeys(_ context.Context, _ *rpc.JsonRpcRequest) (any, *rpc.JsonRpcError) {
