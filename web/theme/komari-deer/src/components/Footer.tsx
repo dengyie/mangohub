@@ -17,7 +17,7 @@ const Footer = () => {
   };
 
   return (
-    <footer className="relative overflow-hidden border-t border-white/[0.05] bg-[#0a0e1a]">
+    <footer className="relative overflow-hidden border-t border-border bg-card">
       <div className="container relative mx-auto px-8 py-6">
         {/* Social icons */}
         <div className="flex items-center justify-center gap-3 mb-4">
@@ -25,27 +25,27 @@ const Footer = () => {
             href="https://github.com/dengyie"
             target="_blank"
             rel="noreferrer"
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 backdrop-blur-sm transition-all hover:border-cyan-400/50 hover:bg-cyan-400/10"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background transition-all hover:border-foreground/40 hover:bg-secondary"
           >
-            <Github className="h-4 w-4 text-white/70" />
+            <Github className="h-4 w-4 text-muted-foreground" />
           </a>
           <a
             href="https://t.me/mangoqwqtech"
             target="_blank"
             rel="noreferrer"
             title="Telegram"
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 backdrop-blur-sm transition-all hover:border-cyan-400/50 hover:bg-cyan-400/10"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background transition-all hover:border-foreground/40 hover:bg-secondary"
           >
-            <Send className="h-4 w-4 text-white/70" />
+            <Send className="h-4 w-4 text-muted-foreground" />
           </a>
           <button
             onClick={handleEmailClick}
-            className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 backdrop-blur-sm transition-all hover:border-cyan-400/50 hover:bg-cyan-400/10 cursor-pointer"
+            className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background transition-all hover:border-foreground/40 hover:bg-secondary cursor-pointer"
             title="Click to copy email"
           >
-            <Mail className="h-4 w-4 text-white/70" />
+            <Mail className="h-4 w-4 text-muted-foreground" />
             {emailCopied && (
-              <span className="absolute left-full ml-2 px-3 py-1.5 text-xs font-medium text-cyan-300 bg-white/10 border border-cyan-400/30 backdrop-blur-md rounded-lg shadow-lg whitespace-nowrap animate-in fade-in slide-in-from-left-2 duration-200">
+              <span className="absolute left-full ml-2 px-3 py-1.5 text-xs font-medium text-foreground bg-popover border border-border rounded-lg shadow-lg whitespace-nowrap animate-in fade-in slide-in-from-left-2 duration-200">
                 ✓ Copied!
               </span>
             )}
@@ -53,8 +53,8 @@ const Footer = () => {
         </div>
 
         {/* Bottom text */}
-        <p className="text-center text-xs text-white/50">
-          <a href="https://github.com/dengyie/mango-hub" target="_blank" rel="noreferrer" className="font-semibold text-white/70 hover:text-cyan-400 transition-colors">Mango Hub</a>
+        <p className="text-center text-xs text-muted-foreground">
+          <a href="https://github.com/dengyie/mango-hub" target="_blank" rel="noreferrer" className="font-semibold text-foreground hover:text-primary transition-colors">Mango Hub</a>
           {' · '}
           <span>Every server at a glance</span>
         </p>

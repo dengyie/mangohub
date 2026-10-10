@@ -3,252 +3,131 @@ import { Search, Grid3X3, Table2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useNodeViewMode } from "@/hooks/useNodeViewMode";
+import { usePingTasks } from "@/hooks/usePingTasks";
 import type { NodeBasicInfo } from "@/contexts/NodeListContext";
-import type { LiveData } from "../types/LiveData";
-import { NodeGrid } from "./Node";
-const NodeTable = React.lazy(() => import("./NodeTable"));
+import type { LiveData } from "@/types/LiveData";
+import { aggregateHealth, getNodeHealth, matchesHealthFilter, type HealthFilter, type NodeStatus } from "@/lib/dashboard";
+import { emptyPingStats, summarizeLivePing } from "@/lib/ping";
+import { NodeGrid, type DashboardNode } from "./Node";
 import { isRegionMatch } from "@/utils/regionHelper";
-import "./NodeDisplay.css";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import "./NodeDisplay.css";
+const NodeTable = React.lazy(() => import("./NodeTable"));
 
-interface NodeDisplayProps {
-  nodes: NodeBasicInfo[];
-  liveData?: LiveData | null;
-}
+interface NodeDisplayProps { nodes: NodeBasicInfo[]; liveData?: LiveData | null; isLive: boolean; children?: React.ReactNode }
+const FILTERS: HealthFilter[] = ["all", "attention", "offline", "cpu", "ram", "disk", "loss", "unknown"];
 
-const NodeDisplay: React.FC<NodeDisplayProps> = ({ nodes, liveData }) => {
-  const [t] = useTranslation();
+const NodeDisplay = ({ nodes, liveData, isLive, children }: NodeDisplayProps) => {
+  const { t } = useTranslation();
   const [viewMode, setViewMode] = useNodeViewMode();
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedGroup, setSelectedGroup] = useLocalStorage<string>(
-    "nodeSelectedGroup",
-    "all"
-  );
+  const [selectedGroup, setSelectedGroup] = useLocalStorage<string>("nodeSelectedGroup", "all");
+  const [filter, setFilter] = useState<HealthFilter>("all");
   const searchRef = useRef<HTMLInputElement>(null);
-
-  // 获取所有的分组
-  const groups = useMemo(() => {
-    const groupSet = new Set<string>();
-    nodes.forEach((node) => {
-      if (node.group && node.group.trim()) {
-        groupSet.add(node.group);
-      }
-    });
-    return Array.from(groupSet).sort();
-  }, [nodes]);
-
-  // 判断是否显示分组选择器
-  const showGroupSelector = groups.length >= 1;
-
-  // 键盘快捷键支持
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // 按 "/" 键聚焦搜索框
-      if (e.key === "/" && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        e.preventDefault();
-        searchRef.current?.focus();
-      }
-      // 按 Escape 键清空搜索
-      if (e.key === "Escape" && searchTerm) {
-        setSearchTerm("");
-        searchRef.current?.blur();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [searchTerm]);
-
-  // 过滤节点
-  const filteredNodes = useMemo(() => {
-    let result = nodes;
-
-    // 先按分组过滤
-    if (selectedGroup !== "all") {
-      result = result.filter((node) => node.group === selectedGroup);
+  const metadata = usePingTasks();
+  const sortedNodes = useMemo(() => [...nodes].sort((a, b) => a.weight - b.weight), [nodes]);
+  const groups = useMemo(() => [...new Set(nodes.map((node) => node.group).filter(Boolean))].sort(), [nodes]);
+  const group = selectedGroup === "all" || groups.includes(selectedGroup) ? selectedGroup : "all";
+  const summaries = useMemo(() => {
+    const online = new Set(liveData?.online);
+    const result = new Map<string, DashboardNode>();
+    for (const node of nodes) {
+      const live = liveData?.data[node.uuid];
+      let status: NodeStatus = "unknown";
+      if (isLive && live) status = online.has(node.uuid) ? "online" : "offline";
+      const ping = status === "online" ? summarizeLivePing(live?.ping ?? {}, metadata.types) : emptyPingStats();
+      result.set(node.uuid, { health: getNodeHealth(node, live, status, ping), ping });
     }
-
-    // 再按搜索条件过滤
-    if (!searchTerm.trim()) return result;
-
-    const term = searchTerm.toLowerCase().trim();
-    return result.filter((node) => {
-      // 基本信息搜索
-      const basicMatch =
-        node.name.toLowerCase().includes(term) ||
-        node.os.toLowerCase().includes(term) ||
-        node.arch.toLowerCase().includes(term);
-
-      // 地区搜索（支持emoji和地区名称）
-      const regionMatch = isRegionMatch(node.region, term);
-
-      // 价格搜索（如果输入数字）
-      const priceMatch =
-        !isNaN(Number(term)) && node.price.toString().includes(term);
-
-      // 状态搜索
-      const isOnline = liveData ? liveData.online?.includes(node.uuid) || false : true;
-      const statusMatch =
-        ((term === "online" || term === "在线") && isOnline) ||
-        ((term === "offline" || term === "离线") && !isOnline);
-
-      return basicMatch || regionMatch || priceMatch || statusMatch;
+    return result;
+  }, [nodes, liveData, isLive, metadata.types]);
+  const totals = useMemo(() => aggregateHealth(Array.from(summaries.values(), (item) => item.health)), [summaries]);
+  const filteredNodes = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    return sortedNodes.filter((node) => {
+      const health = summaries.get(node.uuid)!.health;
+      if (group !== "all" && node.group !== group) return false;
+      if (!matchesHealthFilter(health, filter)) return false;
+      if (!term) return true;
+      const statusMatch = ((term === "online" || term === "在线") && health.status === "online") || ((term === "offline" || term === "离线") && health.status === "offline");
+      return node.name.toLowerCase().includes(term) || node.os.toLowerCase().includes(term) || node.arch.toLowerCase().includes(term) || isRegionMatch(node.region, term) || (!Number.isNaN(Number(term)) && node.price.toString().includes(term)) || statusMatch;
     });
-  }, [nodes, searchTerm, liveData, selectedGroup]);
+  }, [sortedNodes, summaries, group, filter, searchTerm]);
 
-  return (
-    <div className="w-full space-y-6">
-      {/* Control Bar */}
-      <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
-        {/* Search Box */}
-        <div className="relative flex-1 max-w-lg group">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-          <Input
-            ref={searchRef}
-            placeholder={t("search.placeholder", {
-              defaultValue: "Search nodes... (Press '/' to focus)",
-            })}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 pr-10 h-11 bg-card border-none shadow-sm focus-visible:ring-2 focus-visible:ring-primary/20 transition-all"
-          />
-          {searchTerm && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 hover:bg-transparent"
-              onClick={() => {
-                setSearchTerm("");
-                searchRef.current?.focus();
-              }}
-            >
-              <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-            </Button>
-          )}
-        </div>
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      const target = event.target;
+      const typing = target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
+      if (event.key === "/" && !typing && !event.ctrlKey && !event.metaKey && !event.altKey) { event.preventDefault(); searchRef.current?.focus(); }
+      if (event.key === "Escape" && target === searchRef.current) { setSearchTerm(""); searchRef.current?.blur(); }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
+  const reset = () => { setSearchTerm(""); setFilter("all"); setSelectedGroup("all"); };
 
-        {/* View Mode & Group Selector */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-lg border shadow-sm">
-            <Button
-              variant={viewMode === "grid" ? "secondary" : "ghost"}
-              size="sm"
-              className={cn("h-8 gap-2 px-3", viewMode === "grid" && "bg-card shadow-sm")}
-              onClick={() => setViewMode("grid")}
-            >
-              <Grid3X3 className="h-4 w-4" />
-              <span className="hidden sm:inline">
-                {t("nodeDisplay.grid", { defaultValue: "Grid" })}
-              </span>
-            </Button>
-            <Button
-              variant={viewMode === "table" ? "secondary" : "ghost"}
-              size="sm"
-              className={cn("h-8 gap-2 px-3", viewMode === "table" && "bg-card shadow-sm")}
-              onClick={() => setViewMode("table")}
-            >
-              <Table2 className="h-4 w-4" />
-              <span className="hidden sm:inline">
-                {t("nodeDisplay.table", { defaultValue: "Table" })}
-              </span>
-            </Button>
-          </div>
-        </div>
-      </div>
+  let content: React.ReactNode;
+  if (filteredNodes.length === 0) {
+    content = <div className="rounded-xl border border-dashed bg-card py-12 text-center">
+      <p className="mb-3 text-sm text-muted-foreground">{t("search.no_results")}</p>
+      <Button variant="outline" onClick={reset}>{t("dashboard.reset")}</Button>
+    </div>;
+  } else if (viewMode === "grid") {
+    content = <NodeGrid nodes={filteredNodes} liveData={liveData} summaries={summaries} />;
+  } else {
+    content = <Suspense fallback={<p className="p-4 text-sm">{t("dashboard.loading")}</p>}>
+      <NodeTable nodes={filteredNodes} liveData={liveData} isLive={isLive} summaries={summaries} />
+    </Suspense>;
+  }
 
-      {/* Group Selector & Stats */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        {showGroupSelector && (
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-            <Tabs value={selectedGroup} onValueChange={setSelectedGroup} className="w-auto">
-              <TabsList className="h-10 bg-muted/50 p-1 border">
-                <TabsTrigger value="all" className="px-4">
-                  {t("common.all", { defaultValue: "All" })}
-                </TabsTrigger>
-                {groups.map((group) => (
-                  <TabsTrigger key={group} value={group} className="px-4">
-                    {group}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
-          </div>
-        )}
-
-        {/* Results Stats */}
-        <div className="flex items-center gap-2 px-1">
-          <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-          {searchTerm.trim() ? (
-            <span className="text-sm font-medium text-muted-foreground">
-              {t("search.results", {
-                count: filteredNodes.length,
-                total:
-                  selectedGroup === "all"
-                    ? nodes.length
-                    : nodes.filter((n) => n.group === selectedGroup).length,
-                defaultValue: `Found ${filteredNodes.length} nodes`,
-              })}
-            </span>
-          ) : (
-            <span className="text-sm font-medium text-muted-foreground">
-              {selectedGroup === "all"
-                ? t("nodeCard.totalNodes", {
-                    total: nodes.length,
-                    online: liveData ? liveData.online?.length || 0 : nodes.length,
-                    defaultValue: `${liveData ? liveData.online?.length || 0 : nodes.length} Online / ${nodes.length} Total`,
-                  })
-                : t("nodeCard.groupNodes", {
-                    group: selectedGroup,
-                    total: filteredNodes.length,
-                    online: liveData
-                      ? filteredNodes.filter((n) => liveData.online?.includes(n.uuid)).length
-                      : filteredNodes.length,
-                    defaultValue: `${
-                      liveData
-                        ? filteredNodes.filter((n) => liveData.online?.includes(n.uuid)).length
-                        : filteredNodes.length
-                    } Online in ${selectedGroup}`,
-                  })}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Node Display Area */}
-      {filteredNodes.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 bg-muted/20 rounded-lg border border-dashed">
-          <span className="text-lg text-muted-foreground mb-2">
-            {searchTerm.trim()
-              ? t("search.no_results", { defaultValue: "No matching nodes found" })
-              : t("nodes.empty", { defaultValue: "No node data" })}
-          </span>
-          {searchTerm.trim() && (
-            <span className="text-sm text-muted-foreground">
-              {t("search.try_different", {
-                defaultValue: "Try different keywords",
-              })}
-            </span>
-          )}
-        </div>
-      ) : (
-        <>
-          {viewMode === "grid" ? (
-            <NodeGrid nodes={filteredNodes} liveData={liveData} />
-          ) : (
-            <Suspense
-              fallback={<div className="p-4 text-center">Loading table...</div>}
-            >
-              <NodeTable nodes={filteredNodes} liveData={liveData} />
-            </Suspense>
-          )}
-        </>
-      )}
+  return <div className="min-w-0 space-y-4">
+    {children}
+    <div className="flex flex-wrap items-baseline justify-between gap-2">
+      <h1 className="text-xl font-semibold tracking-tight">{t("dashboard.overview")}</h1>
+      <span className="text-xs text-muted-foreground">{t(isLive ? "dashboard.live" : "dashboard.stale")}</span>
     </div>
-  );
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label={t("dashboard.overview")}>
+      {[
+        { key: "total", value: totals.total, hint: t("dashboard.inventory") },
+        { key: "online", value: totals.online, hint: t("dashboard.offlineCount", { count: totals.offline }) },
+        { key: "attention", value: totals.attention, hint: t("dashboard.attentionHint") },
+        { key: "meanCpu", value: totals.meanCpu == null ? "—" : `${totals.meanCpu.toFixed(1)}%`, hint: t("dashboard.cpuHint") },
+      ].map((item) => <div key={item.key} className="min-w-0 rounded-xl border bg-card px-4 py-3">
+        <div className="text-xs text-muted-foreground">{t(`dashboard.${item.key}`)}</div>
+        <div className={cn("mt-1 font-mono text-2xl font-semibold tabular-nums", item.key === "attention" && totals.attention > 0 && "text-amber-600 dark:text-amber-400")}>{item.value}</div>
+        <div className="mt-1 text-[11px] text-muted-foreground">{item.hint}</div>
+      </div>)}
+    </div>
+    {metadata.error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-xs">
+      <span>{t("dashboard.metadataError")}</span><Button variant="outline" size="sm" onClick={metadata.retry} disabled={metadata.loading}>{t("dashboard.retry")}</Button>
+    </div>}
+    <div className="flex flex-wrap items-center gap-3">
+      <div className="relative min-w-0 flex-1 basis-full sm:basis-48">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input ref={searchRef} aria-label={t("dashboard.search")} placeholder={t("search.placeholder")} value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} className="h-10 bg-card pl-9 pr-10" />
+        {searchTerm && <Button variant="ghost" size="icon" className="absolute right-0 top-0 h-10 w-10" aria-label={t("dashboard.clearSearch")} onClick={() => { setSearchTerm(""); searchRef.current?.focus(); }}><X className="h-4 w-4" /></Button>}
+      </div>
+      {groups.length > 0 && <label className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+        <span>{t("dashboard.group")}</span>
+        <select aria-label={t("dashboard.group")} className="h-10 max-w-36 rounded-md border bg-card px-2 text-sm text-foreground" value={group} onChange={(event) => setSelectedGroup(event.target.value)}>
+          <option value="all">{t("common.all")}</option>{groups.map((item) => <option key={item} value={item}>{item}</option>)}
+        </select>
+      </label>}
+      <div className="flex shrink-0 rounded-lg border bg-card p-0.5" role="group" aria-label={t("dashboard.view")}>
+        {(["grid", "table"] as const).map((mode) => <Button key={mode} variant={viewMode === mode ? "secondary" : "ghost"} size="icon" className="h-9 w-10" aria-label={t(`nodeDisplay.${mode}`)} aria-pressed={viewMode === mode} onClick={() => setViewMode(mode)}>{mode === "grid" ? <Grid3X3 className="h-4 w-4" /> : <Table2 className="h-4 w-4" />}</Button>)}
+      </div>
+    </div>
+    <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={t("dashboard.filters")}>
+      <select aria-label={t("dashboard.filters")} value={filter} onChange={(event) => setFilter(event.target.value as HealthFilter)} className="h-10 max-w-[70%] rounded-md border bg-card px-3 text-sm sm:hidden">
+        {FILTERS.map((item) => <option key={item} value={item}>{t(`dashboard.filters_${item}`)}</option>)}
+      </select>
+      <div className="hidden flex-wrap gap-1.5 sm:flex">
+      {FILTERS.map((item) => <Button key={item} size="sm" variant={filter === item ? "secondary" : "ghost"} className="h-9 rounded-full px-3 text-xs" aria-pressed={filter === item} onClick={() => setFilter(item)}>{t(`dashboard.filters_${item}`)}</Button>)}
+      </div>
+      <span className="ml-auto text-xs text-muted-foreground" aria-live="polite">{t("dashboard.results", { count: filteredNodes.length, total: nodes.length })}</span>
+    </div>
+    {content}
+  </div>;
 };
-
 export default NodeDisplay;

@@ -1,0 +1,41 @@
+async (page) => {
+  const check = (condition, message) => { if (!condition) throw new Error(message); };
+  const qa = page.dashboardQA;
+  qa.metadataFailure = true;
+  await page.reload();
+  await page.getByText("Probe metadata is unavailable; probe summaries are unknown.",{exact:true}).waitFor();
+  check((await page.locator('[id="qa-node-2"]').innerText()).includes("Loss · 1h —"), "Failed metadata fabricated network statistics");
+  qa.metadataFailure = false;
+  await page.getByRole("button",{name:"Retry",exact:true}).click();
+  await page.getByText("Probe metadata is unavailable; probe summaries are unknown.",{exact:true}).waitFor({state:"hidden"});
+  check((await page.locator('[id="qa-node-2"]').innerText()).includes("100.0%"), "Metadata retry did not restore measured loss");
+  const aborted = [];
+  page.on("requestfailed", (request) => {
+    if (request.url().includes("/api/rpc2")) aborted.push(request.failure()?.errorText);
+  });
+  qa.historyDelay = 700;
+  const first = page.locator("[data-node-card]").first();
+  await first.getByRole("button",{name:"Details",exact:true}).click();
+  await first.getByRole("status").waitFor();
+  await first.getByRole("button",{name:"Hide details",exact:true}).click();
+  await page.waitForTimeout(900);
+  check(aborted.some((error) => error?.includes("ABORTED")), "Collapsing detail did not cancel the transport");
+  check(await first.locator('[id^="details-"]').count() === 0, "Late history response reopened details");
+  qa.historyDelay = 0;
+  await first.getByRole("button",{name:"Resource charts: Hong Kong · Compute",exact:true}).click();
+  await page.getByRole("dialog").getByText("Monthly Traffic",{exact:true}).waitFor();
+  check(qa.network.filter((url) => url.includes("/api/records/load")).length === 1, "Resource chart did not load on demand");
+  check((await page.getByRole("dialog").innerText()).includes("CNB AI Quota"), "CNB quota chart missing");
+  await page.keyboard.press("Escape");
+  qa.liveFailure = true;
+  await page.getByText("Live updates are unavailable. Retrying automatically.",{exact:true}).waitFor({timeout:10000});
+  const summaryText = await page.locator('[aria-label="Infrastructure overview"]').innerText();
+  check(summaryText.includes("Online\n0") && summaryText.includes("Mean CPU\n—"), "Cached snapshots counted as fresh telemetry");
+  check((await first.innerText()).includes("Unknown"), "Stale node shown as currently online");
+  qa.liveFailure = false;
+  await page.getByText("Live updates are unavailable. Retrying automatically.",{exact:true}).waitFor({state:"hidden",timeout:10000});
+  check((await first.innerText()).includes("95%"), "Live recovery failed");
+  const unexpected = qa.errors.filter((message) => !message.includes("RPC2 live status unavailable:"));
+  check(unexpected.length === 0, `Unexpected browser errors: ${unexpected.join("; ")}`);
+  return {metadataRetry:true,detailCancellation:aborted,resourceHistoryOnDemand:true,staleSnapshotExcluded:true,liveRecovery:true,unexpectedErrors:unexpected};
+}

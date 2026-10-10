@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { RPC2Client } from "../lib/rpc2";
-import type { RPC2ConnectionStateType } from "../types/rpc2";
+import type { RPC2CallOptions, RPC2ConnectionStateType } from "../types/rpc2";
 
 interface RPC2ContextType {
   client: RPC2Client;
@@ -117,19 +117,19 @@ export const useRPC2Call = () => {
   const call = useCallback(<TParams = any, TResult = any>(
     method: string,
     params?: TParams,
-    options?: any
+    options?: RPC2CallOptions
   ): Promise<TResult> => client.call(method, params, options), [client]);
 
   const callViaWebSocket = useCallback(<TParams = any, TResult = any>(
     method: string,
     params?: TParams,
-    options?: any
+    options?: RPC2CallOptions
   ): Promise<TResult> => client.callViaWebSocket(method, params, options), [client]);
 
   const callViaHTTP = useCallback(<TParams = any, TResult = any>(
     method: string,
     params?: TParams,
-    options?: any
+    options?: RPC2CallOptions
   ): Promise<TResult> => client.callViaHTTP(method, params, options), [client]);
 
   const batchCall = useCallback((requests: Array<{ method: string; params?: any; notification?: boolean }>) =>

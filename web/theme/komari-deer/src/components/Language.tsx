@@ -21,7 +21,7 @@ const languages: { code: string; name: string }[] = Object.entries(resources)
 
 const LanguageSwitch = ({
   icon = (
-    <Button variant="ghost" size="icon">
+    <Button variant="ghost" size="icon" aria-label="Language / 语言">
       <svg xmlns="http://www.w3.org/2000/svg" width="50%" viewBox="0 0 24 24">
         <g fill="none">
           <path

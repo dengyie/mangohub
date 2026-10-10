@@ -11,7 +11,7 @@ const providersSource = readFileSync(
   "utf8",
 );
 
-test("theme defaults to dark when no local or managed preference exists", () => {
-  assert.equal(themeContextSource.includes('DEFAULT_APPEARANCE: Appearance = "dark"'), true);
-  assert.equal(providersSource.includes('defaultTheme="dark"'), true);
+test("theme defaults to MangoAPI paper light when no local or managed preference exists", () => {
+  assert.equal(themeContextSource.includes('DEFAULT_APPEARANCE: Appearance = "light"'), true);
+  assert.equal(providersSource.includes('defaultTheme="light"'), true);
 });

@@ -4,6 +4,12 @@ on:
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - 'web/theme/komari-deer/**'
+      - 'docs/**'
+      - 'scripts/deploy-theme.py'
+      - 'tests/test_deploy_theme.py'
+      - '.github/workflows/frontend-deploy.yml'
   workflow_dispatch:
 
 jobs:

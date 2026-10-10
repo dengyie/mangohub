@@ -114,7 +114,7 @@ export const NodeListProvider: React.FC<{ children: React.ReactNode }> = ({
   const [error, setError] = React.useState<string | null>(null);
   const { call } = useRPC2Call();
 
-  const refresh = () => {
+  const refresh = React.useCallback(() => {
     // 不能 setIsLoading(true):60s 定时刷新会把骨架盖回快照/已有数据上,
     // 首帧水合 setIsLoading(false) 与「失败保数据」的降级都会被它破坏。
     // 也不能在开头 setError(null):断网时每次 60s 重试会把错误横幅清掉又弹回来(闪烁),
@@ -168,7 +168,7 @@ export const NodeListProvider: React.FC<{ children: React.ReactNode }> = ({
       .finally(() => {
         setIsLoading(false);
       });
-  };
+  }, [call]);
 
   // 首帧水合:先读上次快照立即渲染(跳过骨架等网络),网络数据到达后由 refresh 覆盖。
   // useLayoutEffect 让快照在首帧绘制前落定,详情页硬加载不先闪一帧骨架。
@@ -182,7 +182,7 @@ export const NodeListProvider: React.FC<{ children: React.ReactNode }> = ({
 
   React.useEffect(() => {
     refresh();
-  }, []);
+  }, [refresh]);
   return (
     <NodeListContext.Provider value={{ nodeList, isLoading, error, refresh }}>
       {children}

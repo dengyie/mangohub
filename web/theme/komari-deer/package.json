@@ -11,7 +11,9 @@
     "lint": "next lint",
     "preview": "next start",
     "i18n:sync": "node ./script/i18n-sync.mjs",
-    "i18n:sync:dry": "node ./script/i18n-sync.mjs --dry-run"
+    "i18n:sync:dry": "node ./script/i18n-sync.mjs --dry-run",
+    "test": "node --import ./script/test-register.mjs --test tests/*.test.mjs",
+    "typecheck": "tsc --noEmit --incremental false"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

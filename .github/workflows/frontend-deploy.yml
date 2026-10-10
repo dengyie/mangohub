@@ -1,0 +1,87 @@
+name: Frontend checks and deploy
+
+on:
+  pull_request:
+    branches: [main]
+    paths: ['web/theme/komari-deer/**', 'scripts/deploy-theme.py', 'tests/test_deploy_theme.py', '.github/workflows/frontend-deploy.yml']
+  push:
+    branches: [main]
+    paths: ['web/theme/komari-deer/**', 'scripts/deploy-theme.py', 'tests/test_deploy_theme.py', '.github/workflows/frontend-deploy.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/theme/komari-deer/package-lock.json
+      - name: Test deployment receiver
+        run: python3 -m unittest discover -s tests -p 'test_deploy_theme.py' -v
+      - name: Install and verify frontend
+        working-directory: web/theme/komari-deer
+        run: |
+          set -euo pipefail
+          npm ci
+          npm test
+          npm run typecheck
+          npm run build
+      - name: Package versioned theme
+        working-directory: web/theme/komari-deer
+        run: |
+          set -euo pipefail
+          printf '{"revision":"%s"}\n' "$GITHUB_SHA" > dist/frontend-release.json
+          tar -czf "$RUNNER_TEMP/mangohub-theme.tar.gz" dist komari-theme.json
+          cd "$RUNNER_TEMP"
+          sha256sum mangohub-theme.tar.gz > mangohub-theme.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mangohub-theme
+          path: |
+            ${{ runner.temp }}/mangohub-theme.tar.gz
+            ${{ runner.temp }}/mangohub-theme.sha256
+          retention-days: 14
+
+  deploy:
+    needs: verify
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mangohub-theme
+      - name: Verify artifact and current main
+        run: |
+          set -euo pipefail
+          sha256sum -c mangohub-theme.sha256
+          git fetch --no-tags --depth=1 origin main
+          test "$GITHUB_SHA" = "$(git rev-parse FETCH_HEAD)"
+      - name: Deploy through restricted SSH command
+        env:
+          DEPLOY_KEY: ${{ secrets.FRONTEND_DEPLOY_KEY }}
+          KNOWN_HOSTS: ${{ secrets.FRONTEND_KNOWN_HOSTS }}
+          DEPLOY_HOST: ${{ vars.FRONTEND_DEPLOY_HOST }}
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS" && test -n "$DEPLOY_HOST"
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/mangohub_deploy"
+          chmod 600 "$HOME/.ssh/mangohub_deploy"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          CHECKSUM="$(cut -d ' ' -f1 mangohub-theme.sha256)"
+          ssh -T -i "$HOME/.ssh/mangohub_deploy" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 \
+            "mango@$DEPLOY_HOST" "deploy $GITHUB_SHA $CHECKSUM" < mangohub-theme.tar.gz

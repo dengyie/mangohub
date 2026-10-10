@@ -27,9 +27,11 @@ const StatCard = ({ title, value, subValue, className }: { title: string, value:
 export const DetailsGrid = ({ uuid, gap, box, align }: DetailsGridProps) => {
   const { t } = useTranslation();
   const { nodeList } = useNodeList();
-  const { live_data } = useLiveData();
+  const { live_data, isLive } = useLiveData();
   const node = nodeList?.find((n) => n.uuid === uuid);
   const data = live_data?.data.data[uuid ?? ""];
+  const current = isLive && Boolean(live_data?.data.online.includes(uuid));
+  const network = current && data?.validMetrics?.network !== false ? data?.network : undefined;
 
   return (
     <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-${gap ?? "4"} w-full`}>
@@ -62,8 +64,8 @@ export const DetailsGrid = ({ uuid, gap, box, align }: DetailsGridProps) => {
         title={t("nodeCard.networkSpeed")}
         value={
           <div className="flex flex-col gap-1 text-base">
-            <span className="text-green-500 whitespace-nowrap">↑ {formatBytes(data?.network.up || 0)}/s</span>
-            <span className="text-blue-500 whitespace-nowrap">↓ {formatBytes(data?.network.down || 0)}/s</span>
+            <span className="text-green-500 whitespace-nowrap">{network ? `↑ ${formatBytes(network.up)}/s` : "—"}</span>
+            <span className="text-blue-500 whitespace-nowrap">{network ? `↓ ${formatBytes(network.down)}/s` : "—"}</span>
           </div>
         }
       />
@@ -73,8 +75,8 @@ export const DetailsGrid = ({ uuid, gap, box, align }: DetailsGridProps) => {
         title={t("nodeCard.totalTraffic")}
         value={
           <div className="flex flex-col gap-1 text-base">
-            <span className="text-muted-foreground whitespace-nowrap">↑ {formatBytes(data?.network.totalUp || 0)}</span>
-            <span className="text-muted-foreground whitespace-nowrap">↓ {formatBytes(data?.network.totalDown || 0)}</span>
+            <span className="text-muted-foreground whitespace-nowrap">{network ? `↑ ${formatBytes(network.totalUp)}` : "—"}</span>
+            <span className="text-muted-foreground whitespace-nowrap">{network ? `↓ ${formatBytes(network.totalDown)}` : "—"}</span>
           </div>
         }
       />
@@ -91,7 +93,7 @@ export const DetailsGrid = ({ uuid, gap, box, align }: DetailsGridProps) => {
       {/* Uptime */}
       <StatCard
         title={t("nodeCard.uptime")}
-        value={data?.uptime ? formatUptime(data?.uptime, t) : "-"}
+        value={current && data ? formatUptime(data.uptime, t) : "—"}
       />
 
       {/* Last Updated */}
@@ -101,9 +103,9 @@ export const DetailsGrid = ({ uuid, gap, box, align }: DetailsGridProps) => {
         </CardHeader>
         <CardContent className="p-4 pt-0">
           <div className="text-sm font-bold">
-            {node?.updated_at
-              ? new Date(data?.updated_at || node.updated_at).toLocaleString()
-              : "-"}
+            {data?.updated_at && Number.isFinite(Date.parse(data.updated_at))
+              ? new Date(data.updated_at).toLocaleString()
+              : "—"}
           </div>
         </CardContent>
       </Card>

@@ -129,6 +129,8 @@ export interface RPC2CallOptions {
   timeout?: number;
   /** 是否为通知请求（不期望响应） */
   notification?: boolean;
+  /** 调用方生命周期信号（路由切换、折叠详情时取消） */
+  signal?: AbortSignal;
 }
 
 /**

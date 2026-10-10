@@ -1,5 +1,6 @@
 "use client";
 
+import AppearanceSwitch from "./AppearanceSwitch";
 import LanguageSwitch from "./Language";
 import LoginDialog from "./Login";
 import Link from "next/link";
@@ -15,22 +16,22 @@ const NavBar = () => {
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 transition-all duration-300 shadow-sm">
-      <div className="container mx-auto flex h-16 md:h-20 items-center justify-between px-4">
+      <div className="container mx-auto flex h-16 md:h-20 items-center justify-between gap-2 px-4">
         {/* Logo and Title */}
-        <div className="flex items-center gap-2">
-          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-all">
-            <div className="h-8 w-8 rounded-lg flex items-center justify-center overflow-hidden">
+        <div className="flex min-w-0 items-center gap-2">
+          <Link href="/" className="flex min-w-0 items-center gap-2 hover:opacity-80 transition-all">
+            <div className="h-8 w-8 shrink-0 rounded-lg flex items-center justify-center overflow-hidden">
               {/* 品牌 logo：透明 PNG，/assets/logo.png 由品牌资产提供 */}
               <img src="/assets/logo.png" alt="logo" className="h-8 w-8 object-contain" />
             </div>
-            <span className="text-xl md:text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            <span className="truncate text-lg md:text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
               {publicInfo?.sitename}
             </span>
           </Link>
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1">
           <Button
             type="button"
             variant="ghost"
@@ -43,6 +44,7 @@ const NavBar = () => {
               {t("remainingValue.title", { defaultValue: "Remaining Value Calculator" })}
             </span>
           </Button>
+          <AppearanceSwitch />
           <LanguageSwitch />
 
           {publicInfo?.private_site ? (

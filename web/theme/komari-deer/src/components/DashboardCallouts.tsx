@@ -28,7 +28,7 @@ export function Callouts() {
   }
 
   // If both conditions are met, don't show any callouts
-  if (ishttps && !showCallout) {
+  if (ishttps && showCallout) {
     return null;
   }
 
@@ -46,9 +46,9 @@ export function Callouts() {
       {!showCallout && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>{t("warn_websocket")}</AlertTitle>
+          <AlertTitle>{t("dashboard.stale")}</AlertTitle>
           <AlertDescription>
-            {t("warn_websocket_desc", "WebSocket connection failed.")}
+            {t("dashboard.liveError")}
           </AlertDescription>
         </Alert>
       )}

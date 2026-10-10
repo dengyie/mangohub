@@ -152,9 +152,12 @@ export function getRotatedMap(
   return { spherePath, graticulePath, countries };
 }
 
+let initialMap: ProjectedWorldMap | null = null;
+
 /** 历史兼容 API:返回初始旋转视角下的地图(旧 naturalEarth1 调用方遗留,现以正射初始视角替代)。 */
 export function getProjectedWorldMap(): ProjectedWorldMap {
-  return getRotatedMap([INITIAL_ROTATION_LAMBDA, INITIAL_ROTATION_PHI, 0]);
+  initialMap ??= getRotatedMap([INITIAL_ROTATION_LAMBDA, INITIAL_ROTATION_PHI, 0]);
+  return initialMap;
 }
 
 /** 暴露初始旋转常量供组件复用(自转从此角度起步)。 */

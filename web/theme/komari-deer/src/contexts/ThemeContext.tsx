@@ -14,7 +14,7 @@ import { useTheme as useNextTheme } from "next-themes";
 import { updateSettings } from "@/lib/api";
 import i18n, { detectClientLanguage, normalizeLanguage } from "@/i18n/config";
 
-export type ColorTheme = "default" | "ocean" | "sunset" | "forest" | "midnight" | "rose";
+export type ColorTheme = "default" | "ocean" | "sunset" | "forest" | "midnight" | "rose" | "paper";
 export type CardLayout = "classic" | "modern" | "minimal" | "detailed" | "compact";
 export type CardDesign = "default" | "quality-bars";
 export type StatusDesign = "default" | "speed";
@@ -91,22 +91,21 @@ const THEME_OVERRIDES_STORAGE_KEY = "komari-theme-config-overrides";
 const NODE_VIEW_STORAGE_KEY = "nodeViewMode";
 const NODE_VIEW_CHANGE_EVENT = "nodeViewModeChange";
 const APPEARANCE_STORAGE_KEY = "komari-appearance";
-const NEXT_THEMES_STORAGE_KEY = "theme";
 const LANGUAGE_STORAGE_KEY = "komari-language";
 const I18NEXT_STORAGE_KEY = "i18nextLng";
 const LOCAL_OVERRIDE_BASE_SIGNATURE_KEY = "komari-theme-local-override-base";
 
-const COLOR_THEMES: ColorTheme[] = ["midnight"];
+const COLOR_THEMES: ColorTheme[] = ["paper"];
 const CARD_LAYOUTS: CardLayout[] = ["compact"];
 const CARD_DESIGNS: CardDesign[] = ["quality-bars"];
 const STATUS_DESIGNS: StatusDesign[] = ["speed"];
 const GRAPH_DESIGNS: GraphDesign[] = ["circle"];
 const NODE_VIEW_MODES: NodeViewMode[] = ["grid", "table"];
-const APPEARANCES: Appearance[] = ["dark"];
+const APPEARANCES: Appearance[] = ["light", "dark", "system"];
 const BACKGROUND_BLUR_TYPES: BackgroundBlurType[] = ["soft", "glass"];
 
 const DEFAULT_THEME_CONFIG: ThemeConfig = {
-  colorTheme: "midnight",
+  colorTheme: "paper",
   cardLayout: "compact",
   cardDesign: "quality-bars",
   statusDesign: "speed",
@@ -131,7 +130,7 @@ export const DEFAULT_STATUS_CARDS_VISIBILITY: StatusCardsVisibility = {
 };
 
 export const DEFAULT_NODE_VIEW_MODE: NodeViewMode = "grid";
-export const DEFAULT_APPEARANCE: Appearance = "dark";
+export const DEFAULT_APPEARANCE: Appearance = "light";
 
 type AdminState = "loading" | "yes" | "no";
 
@@ -430,7 +429,6 @@ function hasLocalOverrides() {
     Object.keys(normalizeThemeConfigOverrides(readJsonStorage(THEME_OVERRIDES_STORAGE_KEY))).length > 0 ||
     Object.keys(extractLegacyThemeOverrides(readJsonStorage(LEGACY_THEME_STORAGE_KEY))).length > 0 ||
     readInitialNodeViewOverride() !== undefined ||
-    readInitialAppearanceOverride() !== undefined ||
     readInitialLanguageOverride() !== undefined
   );
 }
@@ -536,7 +534,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     managedThemeSettings.nodeViewMode ||
     DEFAULT_NODE_VIEW_MODE;
 
-  const appearance = DEFAULT_APPEARANCE;
+  const appearance = localAppearanceOverride ?? DEFAULT_APPEARANCE;
 
   const language = useMemo(
     () =>
@@ -550,13 +548,10 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const clearLocalOverrides = useCallback(() => {
     setLocalThemeOverrides({});
     setLocalNodeViewOverride(undefined);
-    setLocalAppearanceOverride(undefined);
     setLocalLanguageOverride(undefined);
 
     writeThemeOverrides({});
     writeJsonStorage(NODE_VIEW_STORAGE_KEY, undefined);
-    removeStorage(APPEARANCE_STORAGE_KEY);
-    removeStorage(NEXT_THEMES_STORAGE_KEY);
     removeStorage(LANGUAGE_STORAGE_KEY);
     clearI18nLanguageCache();
     removeStorage(LOCAL_OVERRIDE_BASE_SIGNATURE_KEY);
@@ -657,23 +652,11 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     [applyAdminOrLocalPatch, managedSettingsSignature]
   );
 
-  const setAppearanceValue = useCallback(
-    (value: Appearance) => {
-      const isAdminPatch = applyAdminOrLocalPatch({ appearance: value });
-      const nextLocalValue = isAdminPatch ? undefined : value;
-
-      setLocalAppearanceOverride(nextLocalValue);
-      if (nextLocalValue) {
-        writeStringStorage(APPEARANCE_STORAGE_KEY, nextLocalValue);
-      } else {
-        removeStorage(APPEARANCE_STORAGE_KEY);
-      }
-      if (!isAdminPatch) {
-        writeStringStorage(LOCAL_OVERRIDE_BASE_SIGNATURE_KEY, managedSettingsSignature);
-      }
-    },
-    [applyAdminOrLocalPatch, managedSettingsSignature]
-  );
+  // Appearance is a personal browser preference, including for administrators.
+  const setAppearanceValue = useCallback((value: Appearance) => {
+    setLocalAppearanceOverride(value);
+    writeStringStorage(APPEARANCE_STORAGE_KEY, value);
+  }, []);
 
   const setLanguageValue = useCallback(
     (value: string) => {
@@ -765,11 +748,6 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (pendingPatch.nodeViewMode !== undefined) {
       setLocalNodeViewOverride(undefined);
       writeJsonStorage(NODE_VIEW_STORAGE_KEY, undefined);
-    }
-
-    if (pendingPatch.appearance !== undefined) {
-      setLocalAppearanceOverride(undefined);
-      removeStorage(APPEARANCE_STORAGE_KEY);
     }
 
     if (pendingPatch.language !== undefined) {

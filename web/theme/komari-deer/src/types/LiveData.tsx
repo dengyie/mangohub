@@ -1,9 +1,13 @@
+import type { LivePing } from "@/lib/ping";
+
 export type LiveData = {
     online: string[];
     data: { [key: string]: Record };
 };
 
 export type Record = {
+  ping?: LivePing;
+  validMetrics?: { cpu: boolean; ram: boolean; disk: boolean; network: boolean };
   cpu: {
     usage: number;
   };

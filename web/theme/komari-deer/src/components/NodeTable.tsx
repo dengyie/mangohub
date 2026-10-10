@@ -15,6 +15,8 @@ import { ChevronRight, ChevronUp, ChevronDown } from "lucide-react";
 import type { NodeBasicInfo } from "@/contexts/NodeListContext";
 import type { LiveData, Record } from "../types/LiveData";
 import {
+  NodePingDetails,
+  type DashboardNode,
   formatTrafficPercentage,
   formatUptime,
   getTrafficPercentage,
@@ -29,22 +31,11 @@ import { DetailsGrid } from "./DetailsGrid";
 import { getOSImage } from "@/utils";
 import { cn } from "@/lib/utils";
 
-import dynamic from "next/dynamic";
-const MiniPingChart = dynamic(() => import("./MiniPingChart"), {
-  ssr: false,
-  loading: () => (
-    <div
-      className="flex w-full items-center justify-center text-xs text-muted-foreground"
-      style={{ minHeight: 300 }}
-    >
-      Loading ping chart...
-    </div>
-  ),
-});
-
 interface NodeTableProps {
   nodes: NodeBasicInfo[];
   liveData?: LiveData | null;
+  isLive: boolean;
+  summaries: ReadonlyMap<string, DashboardNode>;
 }
 
 type SortField = 'name' | 'os' | 'status' | 'cpu' | 'ram' | 'disk' | 'price' | 'networkUp' | 'networkDown' | 'totalUp' | 'totalDown';
@@ -55,7 +46,7 @@ interface SortState {
   order: SortOrder;
 }
 
-const NodeTable: React.FC<NodeTableProps> = ({ nodes, liveData }) => {
+const NodeTable: React.FC<NodeTableProps> = ({ nodes, liveData, isLive, summaries }) => {
   const [t] = useTranslation();
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [sortState, setSortState] = useState<SortState>({ field: null, order: 'default' });
@@ -94,8 +85,7 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, liveData }) => {
     return sortState.order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />;
   };
 
-  const hasLive = Boolean(liveData);
-  const onlineNodes = liveData && liveData.online ? liveData.online : [];
+  const onlineNodes = new Set(isLive ? liveData?.online : []);
 
   const getNodeData = (uuid: string): Record => {
     const defaultLive = {
@@ -111,18 +101,13 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, liveData }) => {
       : defaultLive;
   };
 
-  const sortedNodes = [...nodes].sort((a, b) => {
-    const aOnline = hasLive ? onlineNodes.includes(a.uuid) : true;
-    const bOnline = hasLive ? onlineNodes.includes(b.uuid) : true;
+  const partitioned: NodeBasicInfo[] = [], offlineNodes: NodeBasicInfo[] = [];
+  for (const node of nodes) (summaries.get(node.uuid)?.health.status === "offline" ? offlineNodes : partitioned).push(node);
+  const sortedNodes = !sortState.field || sortState.order === "default" ? [...partitioned, ...offlineNodes] : [...nodes].sort((a, b) => {
+    const aOnline = onlineNodes.has(a.uuid);
+    const bOnline = onlineNodes.has(b.uuid);
     const aData = getNodeData(a.uuid);
     const bData = getNodeData(b.uuid);
-
-    if (!sortState.field || sortState.order === 'default') {
-      if (aOnline !== bOnline) {
-        return aOnline ? -1 : 1;
-      }
-      return a.weight - b.weight;
-    }
 
     let comparison = 0;
     switch (sortState.field) {
@@ -276,16 +261,12 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, liveData }) => {
           </TableHeader>
         <TableBody>
           {sortedNodes.map((node) => {
-            const isOnline = hasLive ? onlineNodes.includes(node.uuid) : true;
+            const isOnline = onlineNodes.has(node.uuid);
             const nodeData = getNodeData(node.uuid);
+            const health = summaries.get(node.uuid)!.health;
+            const networkKnown = isOnline && Boolean(liveData?.data[node.uuid]) && nodeData.validMetrics?.network !== false;
             const isExpanded = expandedRows.has(node.uuid);
 
-            const memoryUsagePercent = node.mem_total
-              ? (nodeData.ram.used / node.mem_total) * 100
-              : 0;
-            const diskUsagePercent = node.disk_total
-              ? (nodeData.disk.used / node.disk_total) * 100
-              : 0;
             const trafficLimitType = node.traffic_limit_type ?? "sum";
             const trafficUsed = getTrafficUsed(
               nodeData.network.totalUp,
@@ -320,7 +301,8 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, liveData }) => {
                         "h-6 w-6 transition-transform duration-200",
                         isExpanded && "rotate-90"
                       )}
-                      aria-label="Expand row"
+                      aria-label={t("dashboard.details")}
+                      aria-expanded={isExpanded}
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Button>
@@ -330,7 +312,7 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, liveData }) => {
                       <Flag flag={node.region} />
                       <a
                         href={`#/instance/${node.uuid}`}
-                        className="hover:underline focus:outline-none"
+                        className="rounded-sm hover:underline focus-visible:outline-2 focus-visible:outline-primary"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <div className="flex flex-col">
@@ -338,7 +320,7 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, liveData }) => {
                             {node.name}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            {isOnline ? formatUptime(nodeData.uptime, t) : 'Offline'}
+                            {isOnline ? formatUptime(nodeData.uptime, t) : t(`dashboard.${health.status}`)}
                           </span>
                         </div>
                       </a>
@@ -357,13 +339,13 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, liveData }) => {
                         variant="outline"
                         className={cn(
                           "font-normal text-xs px-2 py-0.5 border h-6",
-                          isOnline
-                            ? "border-green-500/30 text-green-600 bg-green-500/10 dark:text-green-400 dark:bg-green-500/20"
-                            : "border-red-500/30 text-red-600 bg-red-500/10 dark:text-red-400 dark:bg-red-500/20"
+                          isOnline && "border-green-500/30 text-green-600 bg-green-500/10 dark:text-green-400 dark:bg-green-500/20",
+                          health.status === "unknown" && "border-border text-muted-foreground bg-muted",
+                          health.status === "offline" && "border-red-500/30 text-red-600 bg-red-500/10 dark:text-red-400 dark:bg-red-500/20"
                         )}
                       >
-                         <span className={cn("w-1.5 h-1.5 rounded-full mr-1.5", isOnline ? "bg-green-500 animate-pulse" : "bg-red-500")} />
-                        {isOnline ? t("nodeCard.online") : t("nodeCard.offline")}
+                         <span className={cn("w-1.5 h-1.5 rounded-full mr-1.5", isOnline ? "bg-green-500" : "bg-muted-foreground")} />
+                        {t(isOnline ? "nodeCard.online" : `dashboard.${health.status}`)}
                       </Badge>
                       {nodeData.message && (
                         <Tips color="#ef4444">{nodeData.message}</Tips>
@@ -373,36 +355,36 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, liveData }) => {
 
                   <TableCell className="py-2 px-2">
                     <div className="flex justify-center">
-                      <AdaptiveChart
-                        value={nodeData.cpu.usage}
+                      {health.cpu == null ? "—" : (<AdaptiveChart
+                        value={health.cpu}
                         label={t("nodeCard.cpu")}
                         compact={true}
                         visualSize={58}
-                      />
+                      />)}
                     </div>
                   </TableCell>
 
                   <TableCell className="py-2 px-2">
                     <div className="flex justify-center">
-                      <AdaptiveChart
-                        value={memoryUsagePercent}
+                      {health.ram == null ? "—" : (<AdaptiveChart
+                        value={health.ram}
                         label={t("nodeCard.ram")}
                         subLabel={`${formatBytes(nodeData.ram.used)} / ${formatBytes(node.mem_total)}`}
                         compact={true}
                         visualSize={58}
-                      />
+                      />)}
                     </div>
                   </TableCell>
 
                   <TableCell className="py-2 px-2">
                     <div className="flex justify-center">
-                      <AdaptiveChart
-                        value={diskUsagePercent}
+                      {health.disk == null ? "—" : (<AdaptiveChart
+                        value={health.disk}
                         label={t("nodeCard.disk")}
                         subLabel={`${formatBytes(nodeData.disk.used)} / ${formatBytes(node.disk_total)}`}
                         compact={true}
                         visualSize={58}
-                      />
+                      />)}
                     </div>
                   </TableCell>
                   {showPriceColumn &&
@@ -425,17 +407,18 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, liveData }) => {
                   <TableCell className="py-2 px-2 text-center">
                     <div className="font-mono text-xs tabular-nums flex items-center justify-center gap-1 whitespace-nowrap">
                       <span className="text-blue-600 dark:text-blue-400">
-                        ↑{formatBytes(nodeData.network.up)}/s
+                        {networkKnown ? `↑${formatBytes(nodeData.network.up)}/s` : "—"}
                       </span>
                       <span className="text-muted-foreground">/</span>
                       <span className="text-green-600 dark:text-green-400">
-                        ↓{formatBytes(nodeData.network.down)}/s
+                        {networkKnown ? `↓${formatBytes(nodeData.network.down)}/s` : "—"}
                       </span>
                     </div>
                   </TableCell>
                   <TableCell className="py-2 px-2 text-center">
                     <div className="space-y-1.5">
-                      {node.traffic_limit > 0 ? (
+                      {!networkKnown && "—"}
+                      {networkKnown && (node.traffic_limit > 0 ? (
                         <div className="mx-auto w-full max-w-[184px] space-y-1">
                           <div className="flex items-center justify-between gap-2 text-[10px] leading-none text-muted-foreground">
                             <span className="shrink-0">{trafficLimitType.toUpperCase()} Limit</span>
@@ -457,7 +440,7 @@ const NodeTable: React.FC<NodeTableProps> = ({ nodes, liveData }) => {
                         <div className="font-mono text-xs tabular-nums text-muted-foreground whitespace-nowrap">
                           {formatBytes(nodeData.network.totalUp + nodeData.network.totalDown)}
                         </div>
-                      )}
+                      ))}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -493,7 +476,7 @@ const ExpandedNodeDetails: React.FC<ExpandedNodeDetailsProps> = ({ node }) => {
         <DetailsGrid uuid={node.uuid} />
       </div>
       <div data-card-blur-surface="true" className="min-w-0 max-w-full overflow-hidden rounded-lg border border-border/60 bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
-        <MiniPingChart hours={24} uuid={node.uuid} />
+        <NodePingDetails basic={node} />
       </div>
     </div>
   );

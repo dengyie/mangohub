@@ -3,7 +3,7 @@ import type { LiveData } from "@/types/LiveData";
 import { resolveFlagCode } from "@/utils/flag";
 import { emojiToRegionMap } from "@/utils/regionHelper";
 
-type RegionStatus = "online" | "offline" | "partial";
+type RegionStatus = "online" | "offline" | "partial" | "unknown";
 
 type RegionMeta = {
   key: string;
@@ -36,6 +36,7 @@ export interface MapRegionSummary {
   total: number;
   online: number;
   offline: number;
+  unknown: number;
   status: RegionStatus;
   nodes: NodeBasicInfo[];
 }
@@ -45,10 +46,12 @@ export interface MapViewSummary {
   totalNodes: number;
   onlineNodes: number;
   offlineNodes: number;
+  unknownNodes: number;
   unmappedNodes: NodeBasicInfo[];
 }
 
-function getRegionStatus(online: number, offline: number): RegionStatus {
+function getRegionStatus(online: number, offline: number, unknown: number): RegionStatus {
+  if (unknown > 0) return "unknown";
   if (online === 0) {
     return "offline";
   }
@@ -105,8 +108,14 @@ export function buildMapViewSummary(nodes: NodeBasicInfo[], liveData?: LiveData 
   const onlineSet = hasLiveStatus ? new Set(liveData?.online ?? []) : null;
   const regionMap = new Map<string, MapRegionSummary>();
   const unmappedNodes: NodeBasicInfo[] = [];
+  let onlineNodes = 0, offlineNodes = 0, unknownNodes = 0;
 
   for (const node of nodes) {
+    const known = Boolean(liveData?.data[node.uuid]);
+    const isNodeOnline = known && Boolean(onlineSet?.has(node.uuid));
+    if (!known) unknownNodes++;
+    else if (isNodeOnline) onlineNodes++;
+    else offlineNodes++;
     const regionMeta = resolveRegionMeta(node.region);
 
     if (!regionMeta) {
@@ -114,18 +123,15 @@ export function buildMapViewSummary(nodes: NodeBasicInfo[], liveData?: LiveData 
       continue;
     }
 
-    const isNodeOnline = onlineSet ? onlineSet.has(node.uuid) : true;
     const existing = regionMap.get(regionMeta.key);
 
     if (existing) {
       existing.nodes.push(node);
       existing.total += 1;
-      if (isNodeOnline) {
-        existing.online += 1;
-      } else {
-        existing.offline += 1;
-      }
-      existing.status = getRegionStatus(existing.online, existing.offline);
+      if (!known) existing.unknown++;
+      else if (isNodeOnline) existing.online++;
+      else existing.offline++;
+      existing.status = getRegionStatus(existing.online, existing.offline, existing.unknown);
       continue;
     }
 
@@ -137,8 +143,9 @@ export function buildMapViewSummary(nodes: NodeBasicInfo[], liveData?: LiveData 
       flagCode: regionMeta.flagCode,
       total: 1,
       online: isNodeOnline ? 1 : 0,
-      offline: isNodeOnline ? 0 : 1,
-      status: isNodeOnline ? "online" : "offline",
+      offline: known && !isNodeOnline ? 1 : 0,
+      unknown: known ? 0 : 1,
+      status: getRegionStatus(isNodeOnline ? 1 : 0, known && !isNodeOnline ? 1 : 0, known ? 0 : 1),
       nodes: [node],
     });
   }
@@ -155,14 +162,13 @@ export function buildMapViewSummary(nodes: NodeBasicInfo[], liveData?: LiveData 
     return left.label.localeCompare(right.label);
   });
 
-  const onlineNodes = nodes.filter((node) => (onlineSet ? onlineSet.has(node.uuid) : true)).length;
-  const offlineNodes = nodes.length - onlineNodes;
 
   return {
     regions,
     totalNodes: nodes.length,
     onlineNodes,
     offlineNodes,
+    unknownNodes,
     unmappedNodes,
   };
 }

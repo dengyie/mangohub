@@ -1,213 +1,37 @@
-import { useEffect, useState } from 'react';
-import { useRPC2Call } from '@/contexts/RPC2Context';
+import { useCallback, useEffect, useState } from "react";
+import { useRPC2Call } from "@/contexts/RPC2Context";
+import { emptyPingStats, summarizePingHistory, type PingStats } from "@/lib/ping";
 
-interface PingRecord {
-  client: string;
-  task_id: number;
-  time: string;
-  value: number;
-}
-
-interface TaskInfo {
-  id: number;
-  name: string;
-  interval: number;
-  loss: number;
-  value?: number;
-  p99?: number;
-  p50?: number;
-  p99_p50_ratio?: number;
-  min?: number;
-  max?: number;
-  avg?: number;
-  latest?: number;
-  total?: number;
-  type?: string;
-}
-
-export interface PingHistoryPoint {
-  time: string;
-  latency: number | null;
-  loss: number | null;
-}
-
-export interface PingStats {
-  avgLatency: number;
-  avgLoss: number;
-  avgVolatility: number;
-  history: PingHistoryPoint[];
-  hasData: boolean;
-  /** HTTP 类型任务只按可达性展示，不参与 latency/loss 阈值着色；up=null 表示无采样；
-   * availability 为窗口内可用率百分比(无采样为 null) */
-  httpReachability: { name: string; up: boolean | null; availability: number | null }[];
-}
-
-const HISTORY_BUCKET_COUNT = 28;
-
-function createEmptyStats(): PingStats {
-  return {
-    avgLatency: 0,
-    avgLoss: 0,
-    avgVolatility: 0,
-    history: [],
-    hasData: false,
-    httpReachability: [],
-  };
-}
-
-function buildPingHistory(
-  records: PingRecord[],
-  icmpTaskIds: Set<number>,
-): PingHistoryPoint[] {
-  // 只统计 ICMP 类型任务:HTTP 可达性任务(如「本站-可达性」)的整页延迟
-  // 结构上就是几百 ms,混进阈值色条会让卡片满屏假红。
-  const icmpRecords = records.filter((record) => icmpTaskIds.has(record.task_id));
-  if (icmpRecords.length === 0) {
-    return [];
-  }
-
-  const sortedRecords = icmpRecords
-    .map((record) => ({
-      ...record,
-      timestamp: new Date(record.time).getTime(),
-    }))
-    .filter((record) => Number.isFinite(record.timestamp))
-    .sort((left, right) => left.timestamp - right.timestamp);
-
-  if (sortedRecords.length === 0) {
-    return [];
-  }
-
-  const firstTime = sortedRecords[0].timestamp;
-  const lastTime = sortedRecords[sortedRecords.length - 1].timestamp;
-  const bucketCount = Math.min(HISTORY_BUCKET_COUNT, sortedRecords.length);
-  const bucketSize = Math.max(1, (lastTime - firstTime) / bucketCount);
-
-  return Array.from({ length: bucketCount }, (_, index) => {
-    const startTime = firstTime + bucketSize * index;
-    const endTime = index === bucketCount - 1 ? lastTime + 1 : startTime + bucketSize;
-    const bucketRecords = sortedRecords.filter(
-      (record) => record.timestamp >= startTime && record.timestamp < endTime,
-    );
-    const validLatencyRecords = bucketRecords.filter((record) => record.value >= 0);
-    const lostRecords = bucketRecords.length - validLatencyRecords.length;
-    const latency =
-      validLatencyRecords.length > 0
-        ? validLatencyRecords.reduce((sum, record) => sum + record.value, 0) / validLatencyRecords.length
-        : null;
-    const loss = bucketRecords.length > 0 ? (lostRecords / bucketRecords.length) * 100 : null;
-
-    return {
-      time: new Date(startTime).toISOString(),
-      latency,
-      loss,
-    };
-  });
-}
-
-export function usePingStats(uuid: string, hours: number = 24): PingStats {
-  const { call } = useRPC2Call();
-  const [stats, setStats] = useState<PingStats>(() => createEmptyStats());
-
+interface PingState { uuid: string; stats: PingStats; loading: boolean; error: Error | null }
+export function usePingStats(uuid: string, enabled: boolean) {
+  const { callViaHTTP } = useRPC2Call();
+  const [revision, setRevision] = useState(0);
+  const [state, setState] = useState<PingState>(() => ({ uuid, stats: emptyPingStats(), loading: false, error: null }));
+  const retry = useCallback(() => setRevision((value) => value + 1), []);
   useEffect(() => {
-    if (!uuid) return;
-
+    if (!enabled || !uuid) return;
     const controller = new AbortController();
-
-    (async () => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const refresh = async () => {
+      setState({ uuid, stats: emptyPingStats(), loading: true, error: null });
       try {
-        type RpcResp = {
-          count: number;
-          records: PingRecord[];
-          tasks?: TaskInfo[];
-          from?: string;
-          to?: string;
-        };
-
-        const result = await call<any, RpcResp>('common:getRecords', {
-          uuid,
-          type: 'ping',
-          hours,
-        });
-
-        const records = result?.records || [];
-        const tasks = result?.tasks || [];
-
-        if (records.length === 0 || tasks.length === 0) {
-          setStats(createEmptyStats());
-          return;
-        }
-
-        // 按任务类型分流:ICMP 任务进延迟/丢包统计与阈值色条;HTTP 任务只做可达性。
-        const icmpTaskIds = new Set<number>();
-        const httpTasks: TaskInfo[] = [];
-        for (const task of tasks) {
-          if (task.type === "http") {
-            httpTasks.push(task);
-          } else {
-            icmpTaskIds.add(task.id);
-          }
-        }
-        const icmpTasks = tasks.filter((task) => icmpTaskIds.has(task.id));
-
-        const history = buildPingHistory(records, icmpTaskIds);
-        const latencyValues = icmpTasks
-          .map((task) => task.avg ?? task.latest ?? task.value ?? task.p50)
-          .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
-        const avgLatency = latencyValues.length > 0
-          ? latencyValues.reduce((sum, value) => sum + value, 0) / latencyValues.length
-          : 0;
-
-        // Calculate average loss from tasks (ICMP only)
-        const totalLoss = icmpTasks.reduce((sum, task) => sum + (task.loss || 0), 0);
-        const avgLoss = icmpTasks.length > 0 ? totalLoss / icmpTasks.length : 0;
-
-        // Calculate volatility (p99/p50 ratio average, ICMP only)
-        const volatilityValues = icmpTasks
-          .filter(task => task.p99_p50_ratio !== undefined && task.p99_p50_ratio > 0)
-          .map(task => task.p99_p50_ratio!);
-
-        const avgVolatility = volatilityValues.length > 0
-          ? volatilityValues.reduce((sum, val) => sum + val, 0) / volatilityValues.length
-          : 0;
-
-        // HTTP 任务可达性:以该任务最新采样为准(value<0 即不可达);窗口内无采样 = unknown。
-        // 同时统计窗口内可用率(up 采样占比),无采样时为 null。
-        const httpReachability = httpTasks.map((task) => {
-          let up: boolean | null = null;
-          let newestTs = -Infinity;
-          let samples = 0;
-          let upSamples = 0;
-          for (const record of records) {
-            if (record.task_id !== task.id) continue;
-            const reachable = record.value >= 0;
-            samples += 1;
-            if (reachable) upSamples += 1;
-            const ts = new Date(record.time).getTime();
-            if (Number.isFinite(ts) && ts > newestTs) {
-              newestTs = ts;
-              up = reachable;
-            }
-          }
-          const availability = samples > 0 ? (upSamples / samples) * 100 : null;
-          return { name: task.name, up, availability };
-        });
-
-        setStats({
-          avgLatency,
-          avgLoss,
-          avgVolatility,
-          history,
-          hasData: true,
-          httpReachability,
-        });
-      } catch (err) {
-        setStats(createEmptyStats());
+        const response = await callViaHTTP<{ uuid: string; type: string; hours: number; max_count: number }, unknown>(
+          "common:getRecords", { uuid, type: "ping", hours: 1, max_count: 4000 }, { signal: controller.signal, timeout: 15000 },
+        );
+        if (controller.signal.aborted) return;
+        setState({ uuid, stats: summarizePingHistory(response), loading: false, error: null });
+      } catch (cause) {
+        if (controller.signal.aborted) return;
+        const error = new Error("Ping history unavailable");
+        error.cause = cause;
+        setState({ uuid, stats: emptyPingStats(), loading: false, error });
+      } finally {
+        if (!controller.signal.aborted) timer = setTimeout(refresh, 60000);
       }
-    })();
-
-    return () => controller.abort();
-  }, [uuid, hours, call]);
-
-  return stats;
+    };
+    void refresh();
+    return () => { controller.abort(); clearTimeout(timer); };
+  }, [uuid, enabled, revision, callViaHTTP]);
+  const current = state.uuid === uuid ? state : { stats: emptyPingStats(), loading: enabled, error: null };
+  return { ...current, retry };
 }

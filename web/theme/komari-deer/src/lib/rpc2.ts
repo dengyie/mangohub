@@ -219,12 +219,25 @@ export class RPC2Client {
       id: options.notification ? undefined : this.generateRequestId(),
     };
 
+    const controller = new AbortController();
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const onAbort = () => controller.abort(options.signal?.reason);
+    if (options.signal) {
+      if (options.signal.aborted) onAbort();
+      else options.signal.addEventListener("abort", onAbort, { once: true });
+    }
+    if (options.timeout != null) {
+      timeoutId = setTimeout(() => {
+        controller.abort(new DOMException("The operation was aborted due to timeout", "TimeoutError"));
+      }, options.timeout);
+    }
+
     try {
       const response = await fetch(this.baseUrl, {
         method: "POST",
         headers: this.options.headers,
         body: JSON.stringify(request),
-        signal: options.timeout ? AbortSignal.timeout(options.timeout) : undefined,
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -246,7 +259,12 @@ export class RPC2Client {
       if (error instanceof Error) {
         throw error;
       }
-      throw new Error(`请求失败: ${method}`);
+      const wrapped = new Error(`请求失败: ${method}`);
+      wrapped.cause = error;
+      throw wrapped;
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+      options.signal?.removeEventListener("abort", onAbort);
     }
   }
 
