@@ -502,20 +502,22 @@ func doInitialize() error {
 	// metric store 的读写 DTO 和旧表导入 DTO 保留在 models 包中。
 	// models.TrafficReportNotification 同样仅为旧数据库兼容保留，不再建表。
 
-	err = instance.AutoMigrate(
-		&models.User{},
-		&models.Client{},
-		&models.Log{},
-		&models.Clipboard{},
-		&models.LoadNotification{},
-		&models.OfflineNotification{},
-		&models.PingTask{},
-		&models.OidcProvider{},
-		&models.MessageSenderProvider{},
-		&models.ThemeConfiguration{},
-		&models.PluginConfiguration{},
-		&models.MiningEarningsSnapshot{},
-	)
+		err = instance.AutoMigrate(
+			&models.User{},
+			&models.Client{},
+			&models.Log{},
+			&models.Clipboard{},
+			&models.LoadNotification{},
+			&models.OfflineNotification{},
+			&models.PingTask{},
+			&models.OidcProvider{},
+			&models.MessageSenderProvider{},
+			&models.ThemeConfiguration{},
+			&models.PluginConfiguration{},
+			&models.MiningEarningsSnapshot{},
+			&models.SSHKey{},
+			&models.SSHTicket{},
+		)
 	if err != nil {
 		return fmt.Errorf("failed to create tables: %w", err)
 	}

@@ -248,13 +248,24 @@ func registerAdminRoutes(r *gin.Engine) {
 		}
 	}
 
-	// ping tasks
-	pingTask := g.Group("/ping")
-	{
-		pingTask.GET("/", jsonRpc.Bind("admin:getAllPingTasks"))
-		pingTask.POST("/add", jsonRpc.Bind("admin:addPingTask"))
-		pingTask.POST("/delete", jsonRpc.Bind("admin:deletePingTask"))
-		pingTask.POST("/edit", jsonRpc.Bind("admin:editPingTask"))
-		pingTask.POST("/order", jsonRpc.Bind("admin:orderPingTask"))
+		// ping tasks
+		pingTask := g.Group("/ping")
+		{
+			pingTask.GET("/", jsonRpc.Bind("admin:getAllPingTasks"))
+			pingTask.POST("/add", jsonRpc.Bind("admin:addPingTask"))
+			pingTask.POST("/delete", jsonRpc.Bind("admin:deletePingTask"))
+			pingTask.POST("/edit", jsonRpc.Bind("admin:editPingTask"))
+			pingTask.POST("/order", jsonRpc.Bind("admin:orderPingTask"))
+		}
+
+		// ssh keys and cross-node ticket management
+		sshGroup := g.Group("/ssh")
+		{
+			sshGroup.GET("/keys", jsonRpc.Bind("admin:listSSHKeys"))
+			sshGroup.POST("/keys/create", jsonRpc.Bind("admin:createSSHKey"))
+			sshGroup.POST("/keys/generate", jsonRpc.Bind("admin:generateSSHKey"))
+			sshGroup.POST("/keys/delete", jsonRpc.Bind("admin:deleteSSHKey"))
+			sshGroup.POST("/ticket/request", jsonRpc.Bind("client:requestSSHTicket"))
+			sshGroup.POST("/ticket/revoke", jsonRpc.Bind("client:revokeSSHTicket"))
+		}
 	}
-}

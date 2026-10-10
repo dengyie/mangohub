@@ -1,0 +1,193 @@
+package jsonrpc
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/komari-monitor/komari/cmd/flags"
+	"github.com/komari-monitor/komari/database/dbcore"
+	"github.com/komari-monitor/komari/database/models"
+	"github.com/komari-monitor/komari/database/ssh"
+	"github.com/komari-monitor/komari/pkg/rpc"
+)
+
+func TestSSHManagementAndTicketFlow(t *testing.T) {
+	flags.DatabaseType = flags.DatabaseTypeSQLite
+	flags.DatabaseFile = "file:ssh_flow_test?mode=memory&cache=shared"
+	db := dbcore.GetDBInstance()
+
+	// 1. 初始化目标 Client A 与 目标 Client B
+	targetUUID := "target-client-uuid-1"
+	targetClient := models.Client{
+		UUID:      targetUUID,
+		Token:     "target-token-1",
+		Name:      "Tianyi-Win1",
+		OS:        "linux",
+		Group:     "production-fleet",
+		Tags:      "region:bj;allow-ssh-fleet",
+		IPv4:      "10.144.144.21",
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+	}
+	_ = db.Create(&targetClient)
+
+	sourceUUID := "source-client-uuid-1"
+	sourceClient := models.Client{
+		UUID:      sourceUUID,
+		Token:     "source-token-1",
+		Name:      "Cue-Sandbox1",
+		OS:        "linux",
+		Group:     "production-fleet",
+		IPv4:      "10.144.144.81",
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+	}
+	_ = db.Create(&sourceClient)
+
+	unauthorizedUUID := "unauthorized-uuid-1"
+	unauthorizedClient := models.Client{
+		UUID:      unauthorizedUUID,
+		Token:     "unauthorized-token-1",
+		Name:      "Untrusted-Node",
+		OS:        "linux",
+		Group:     "isolated-guest",
+		IPv4:      "10.144.144.99",
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+	}
+	_ = db.Create(&unauthorizedClient)
+
+	isolatedTargetUUID := "isolated-target-uuid-1"
+	isolatedTargetClient := models.Client{
+		UUID:      isolatedTargetUUID,
+		Token:     "isolated-token-1",
+		Name:      "Core-Database",
+		OS:        "linux",
+		Group:     "secure-vault",
+		Tags:      "isolated;no-fleet-mesh",
+		IPv4:      "10.144.144.5",
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+	}
+	_ = db.Create(&isolatedTargetClient)
+
+	// 2. 生成/导入 SSH 密钥（Vault 根密钥）
+	genReq := &rpc.JsonRpcRequest{
+		Params: map[string]any{"name": "fleet-default-key", "scope": "global", "description": "integration test"},
+	}
+	res, rpcErr := adminGenerateSSHKey(context.Background(), genReq)
+	if rpcErr != nil {
+		t.Fatalf("adminGenerateSSHKey failed: %v", rpcErr)
+	}
+	resMap := res.(map[string]any)
+	keyObj := resMap["key"].(*models.SSHKey)
+	masterPrivKey := resMap["private_key"].(string)
+
+	if keyObj.ID == "" || masterPrivKey == "" {
+		t.Fatalf("Key generation returned empty fields")
+	}
+
+	// 3. 管理员申请跨节点互访 Ticket（应成功，且下发单次专属临时私钥，绝不下发集群根私钥）
+	adminCtx := rpc.NewContextWithMeta(context.Background(), &rpc.ContextMeta{
+		Permission: rpc.RoleAdmin,
+		User:       &models.User{Username: "admin"},
+	})
+	reqTicket := &rpc.JsonRpcRequest{
+		Params: map[string]any{
+			"source_client_uuid": sourceUUID,
+			"target_client_uuid": targetUUID,
+			"duration_seconds":   1800,
+		},
+	}
+	tktRes, rpcErr := clientRequestSSHTicket(adminCtx, reqTicket)
+	if rpcErr != nil {
+		t.Fatalf("clientRequestSSHTicket by admin failed: %v", rpcErr)
+	}
+	tMap := tktRes.(map[string]any)
+	ticket := tMap["ticket"].(*models.SSHTicket)
+	ticketPriv := tMap["private_key"].(string)
+	targetInfo := tMap["target_info"].(map[string]any)
+
+	if ticket.TicketID == "" || ticket.Status != "active" {
+		t.Fatalf("Ticket not active: %+v", ticket)
+	}
+	// 验证核心安全点：单次临时私钥必须独立存在，绝不等于集群 masterPrivKey！
+	if ticketPriv == masterPrivKey {
+		t.Fatalf("Security failure: Master private key leaked in ticket response!")
+	}
+	if ticket.PublicKey == keyObj.PublicKey {
+		t.Fatalf("Security failure: Ticket is using global master public key instead of ephemeral public key!")
+	}
+	// 验证可通过解密助手解出临时私钥
+	decEphem, err := ssh.GetTicketDecryptedPrivateKey(ticket)
+	if err != nil || decEphem != ticketPriv {
+		t.Fatalf("Ticket decrypted ephemeral private key mismatch: err=%v", err)
+	}
+	if targetInfo["host"] != "10.144.144.21" {
+		t.Fatalf("Target host expected 10.144.144.21, got %v", targetInfo["host"])
+	}
+
+	// 4. 越权阻断测试：未授权隔离节点试图申请访问受保护核心数据库（应被拒绝）
+	untrustedCtx := rpc.NewContextWithMeta(context.Background(), &rpc.ContextMeta{
+		Permission:  rpc.RoleClient,
+		ClientToken: "unauthorized-token-1",
+	})
+	unauthorizedReq := &rpc.JsonRpcRequest{
+		Params: map[string]any{
+			"target_client_uuid": isolatedTargetUUID,
+			"duration_seconds":   3600,
+		},
+	}
+	_, blockedErr := clientRequestSSHTicket(untrustedCtx, unauthorizedReq)
+	if blockedErr == nil {
+		t.Fatalf("Expected cross-group unauthorized access to be blocked, but succeeded!")
+	}
+	if blockedErr.Code != rpc.PermissionDenied {
+		t.Fatalf("Expected PermissionDenied error code, got %d: %s", blockedErr.Code, blockedErr.Message)
+	}
+
+	// 5. 合法节点（受信任同组/含 allow-ssh-fleet）申请互访（应成功）
+	clientCtx := rpc.NewContextWithMeta(context.Background(), &rpc.ContextMeta{
+		Permission:  rpc.RoleClient,
+		ClientToken: "source-token-1",
+	})
+	legitReq := &rpc.JsonRpcRequest{
+		Params: map[string]any{
+			"target_client_uuid": targetUUID,
+			"duration_seconds":   3600,
+		},
+	}
+	legitRes, rpcErr := clientRequestSSHTicket(clientCtx, legitReq)
+	if rpcErr != nil {
+		t.Fatalf("Legitimate client ticket request failed: %v", rpcErr)
+	}
+	legitMap := legitRes.(map[string]any)
+	legitTicket := legitMap["ticket"].(*models.SSHTicket)
+
+	// 6. 吊销权限控制测试：非相关节点试图吊销他人的 Ticket（应被拒绝）
+	foreignRevReq := &rpc.JsonRpcRequest{
+		Params: map[string]any{"ticket_id": legitTicket.TicketID},
+	}
+	_, foreignRevErr := clientRevokeSSHTicket(untrustedCtx, foreignRevReq)
+	if foreignRevErr == nil {
+		t.Fatalf("Foreign node was able to revoke ticket belonging to another client!")
+	}
+
+	// 7. 拥有者或管理员吊销 Ticket（应成功）
+	revReq := &rpc.JsonRpcRequest{
+		Params: map[string]any{"ticket_id": legitTicket.TicketID},
+	}
+	revRes, rpcErr := clientRevokeSSHTicket(clientCtx, revReq)
+	if rpcErr != nil {
+		t.Fatalf("clientRevokeSSHTicket failed: %v", rpcErr)
+	}
+	if revMap := revRes.(map[string]any); !revMap["success"].(bool) {
+		t.Fatalf("Revoke should return success: true")
+	}
+
+	dbTicket, err := ssh.GetSSHTicketByID(legitTicket.TicketID)
+	if err != nil || dbTicket.Status != "revoked" {
+		t.Fatalf("Ticket should be revoked in DB, got: %+v", dbTicket)
+	}
+}

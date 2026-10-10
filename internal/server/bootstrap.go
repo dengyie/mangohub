@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/komari-monitor/komari/database/dbcore"
+	"github.com/komari-monitor/komari/database/ssh"
 	"github.com/komari-monitor/komari/internal/config"
 	"github.com/komari-monitor/komari/utils"
 )
@@ -23,12 +24,14 @@ func (a *App) Bootstrap() error {
 		return fmt.Errorf("failed to create plugin storage directory: %w", err)
 	}
 
-	dbcore.SetVersionID(utils.CurrentVersion + "-" + utils.VersionHash)
-	if err := dbcore.Initialize(); err != nil {
-		return fmt.Errorf("failed to initialize database: %w", err)
-	}
-	a.dbReady = true
-	a.addCleanup("database", func(context.Context) error { return dbcore.Close() })
+		dbcore.SetVersionID(utils.CurrentVersion + "-" + utils.VersionHash)
+		if err := dbcore.Initialize(); err != nil {
+			return fmt.Errorf("failed to initialize database: %w", err)
+		}
+		a.dbReady = true
+		a.addCleanup("database", func(context.Context) error { return dbcore.Close() })
+
+		_ = ssh.EnsureDefaultFleetKey()
 
 	gin.SetMode(gin.ReleaseMode)
 	settings, err := config.GetManyAs[config.Settings]()
