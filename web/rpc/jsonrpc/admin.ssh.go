@@ -67,51 +67,51 @@ func init() {
 		Returns: "{ success: boolean }",
 	})
 
-		// 跨节点互访申请 SSH 凭据（允许已认证的 Client 节点或 Admin 申请）
-		RegisterWithGroupAndMeta("requestSSHTicket", rpc.RoleClient, clientRequestSSHTicket, &rpc.MethodMeta{
-			Name:        "client:requestSSHTicket",
-			Summary:     "Request SSH access ticket to target cloud host",
-			Description: "Request authorization to SSH into another client device",
-			Params: []rpc.ParamMeta{
-				{Name: "source_client_uuid", Type: "string", Description: "Source client UUID (optional if calling via client token)"},
-				{Name: "target_client_uuid", Type: "string", Description: "Target client UUID to access"},
-				{Name: "duration_seconds", Type: "number", Description: "Desired duration in seconds (default 3600, max 86400)"},
-				{Name: "target_user", Type: "string", Description: "Target login username (default ubuntu/root)"},
-			},
-			Returns: "{ ticket: SSHTicket, private_key: string, target_info: object }",
-		})
-		RegisterWithGroupAndMeta("requestSSHTicket", rpc.RoleAdmin, clientRequestSSHTicket, &rpc.MethodMeta{
-			Name:        "admin:requestSSHTicket",
-			Summary:     "Request SSH access ticket to target cloud host by Admin",
-			Description: "Admin request authorization to SSH into a client device",
-			Params: []rpc.ParamMeta{
-				{Name: "source_client_uuid", Type: "string", Description: "Source client UUID (optional)"},
-				{Name: "target_client_uuid", Type: "string", Description: "Target client UUID to access"},
-				{Name: "duration_seconds", Type: "number", Description: "Desired duration in seconds (default 3600, max 86400)"},
-				{Name: "target_user", Type: "string", Description: "Target login username (default ubuntu/root)"},
-			},
-			Returns: "{ ticket: SSHTicket, private_key: string, target_info: object }",
-		})
+	// 跨节点互访申请 SSH 凭据（允许已认证的 Client 节点或 Admin 申请）
+	RegisterWithGroupAndMeta("requestSSHTicket", rpc.RoleClient, clientRequestSSHTicket, &rpc.MethodMeta{
+		Name:        "client:requestSSHTicket",
+		Summary:     "Request SSH access ticket to target cloud host",
+		Description: "Request authorization to SSH into another client device",
+		Params: []rpc.ParamMeta{
+			{Name: "source_client_uuid", Type: "string", Description: "Source client UUID (optional if calling via client token)"},
+			{Name: "target_client_uuid", Type: "string", Description: "Target client UUID to access"},
+			{Name: "duration_seconds", Type: "number", Description: "Desired duration in seconds (default 3600, max 86400)"},
+			{Name: "target_user", Type: "string", Description: "Target login username (default ubuntu/root)"},
+		},
+		Returns: "{ ticket: SSHTicket, private_key: string, target_info: object }",
+	})
+	RegisterWithGroupAndMeta("requestSSHTicket", rpc.RoleAdmin, clientRequestSSHTicket, &rpc.MethodMeta{
+		Name:        "admin:requestSSHTicket",
+		Summary:     "Request SSH access ticket to target cloud host by Admin",
+		Description: "Admin request authorization to SSH into a client device",
+		Params: []rpc.ParamMeta{
+			{Name: "source_client_uuid", Type: "string", Description: "Source client UUID (optional)"},
+			{Name: "target_client_uuid", Type: "string", Description: "Target client UUID to access"},
+			{Name: "duration_seconds", Type: "number", Description: "Desired duration in seconds (default 3600, max 86400)"},
+			{Name: "target_user", Type: "string", Description: "Target login username (default ubuntu/root)"},
+		},
+		Returns: "{ ticket: SSHTicket, private_key: string, target_info: object }",
+	})
 
-		// 吊销互访 Ticket
-		RegisterWithGroupAndMeta("revokeSSHTicket", rpc.RoleClient, clientRevokeSSHTicket, &rpc.MethodMeta{
-			Name:        "client:revokeSSHTicket",
-			Summary:     "Revoke an active SSH access ticket",
-			Description: "Revoke ticket and remove public key on target client immediately",
-			Params: []rpc.ParamMeta{
-				{Name: "ticket_id", Type: "string", Description: "Ticket ID to revoke"},
-			},
-			Returns: "{ success: boolean }",
-		})
-		RegisterWithGroupAndMeta("revokeSSHTicket", rpc.RoleAdmin, clientRevokeSSHTicket, &rpc.MethodMeta{
-			Name:        "admin:revokeSSHTicket",
-			Summary:     "Revoke an active SSH access ticket by Admin",
-			Description: "Admin revoke ticket and remove public key on target client immediately",
-			Params: []rpc.ParamMeta{
-				{Name: "ticket_id", Type: "string", Description: "Ticket ID to revoke"},
-			},
-			Returns: "{ success: boolean }",
-		})
+	// 吊销互访 Ticket
+	RegisterWithGroupAndMeta("revokeSSHTicket", rpc.RoleClient, clientRevokeSSHTicket, &rpc.MethodMeta{
+		Name:        "client:revokeSSHTicket",
+		Summary:     "Revoke an active SSH access ticket",
+		Description: "Revoke ticket and remove public key on target client immediately",
+		Params: []rpc.ParamMeta{
+			{Name: "ticket_id", Type: "string", Description: "Ticket ID to revoke"},
+		},
+		Returns: "{ success: boolean }",
+	})
+	RegisterWithGroupAndMeta("revokeSSHTicket", rpc.RoleAdmin, clientRevokeSSHTicket, &rpc.MethodMeta{
+		Name:        "admin:revokeSSHTicket",
+		Summary:     "Revoke an active SSH access ticket by Admin",
+		Description: "Admin revoke ticket and remove public key on target client immediately",
+		Params: []rpc.ParamMeta{
+			{Name: "ticket_id", Type: "string", Description: "Ticket ID to revoke"},
+		},
+		Returns: "{ success: boolean }",
+	})
 }
 
 func adminListSSHKeys(_ context.Context, _ *rpc.JsonRpcRequest) (any, *rpc.JsonRpcError) {
@@ -234,6 +234,10 @@ func clientRequestSSHTicket(ctx context.Context, req *rpc.JsonRpcRequest) (any, 
 		}
 	}
 
+	// 过期工单状态翻转（best-effort）：agent 侧租约定时器只负责剪钥，
+	// DB 口径在这里收敛，避免过期工单永久停留 active。
+	_ = ssh.ExpireStaleTickets()
+
 	if params.TargetClientUUID == "" {
 		return nil, rpc.MakeError(rpc.InvalidParams, "target_client_uuid is required", nil)
 	}
@@ -276,22 +280,6 @@ func clientRequestSSHTicket(ctx context.Context, req *rpc.JsonRpcRequest) (any, 
 		if !sameGroup && !hasExplicitAllow {
 			return nil, rpc.MakeError(rpc.PermissionDenied, fmt.Sprintf("Access denied: node %s is not authorized to access node %s (different group and no explicit allow tag)", sourceClient.Name, targetClient.Name), nil)
 		}
-	}
-
-	// 寻找关联的配置项或全局公钥用于参考绑定
-	keys, err := ssh.ListSSHKeys()
-	if err != nil {
-		return nil, rpc.MakeError(rpc.InternalError, "Failed to list vault keys: "+err.Error(), nil)
-	}
-	var selectedKeyID string
-	for i := range keys {
-		if keys[i].Scope == "client" && keys[i].TargetUUID == params.TargetClientUUID {
-			selectedKeyID = keys[i].ID
-			break
-		}
-	}
-	if selectedKeyID == "" && len(keys) > 0 {
-		selectedKeyID = keys[0].ID
 	}
 
 	duration := time.Duration(params.DurationSeconds) * time.Second
@@ -342,12 +330,20 @@ func clientRequestSSHTicket(ctx context.Context, req *rpc.JsonRpcRequest) (any, 
 	// 核心安全重构：为每个 Ticket 动态生成单次专属临时密钥对（Ephemeral Keypair）
 	// ticket.PublicKey 注入目标节点，专属临时私钥 ephemPriv 返回给调用方，
 	// 彻底杜绝全局主私钥泄露给客户端！
-	ticket, ephemPriv, err := ssh.CreateSSHTicket(sourceUUID, params.TargetClientUUID, selectedKeyID, targetUser, targetHost, targetPort, remoteIP, duration)
+	ticket, ephemPriv, err := ssh.CreateSSHTicket(sourceUUID, params.TargetClientUUID, "", targetUser, targetHost, targetPort, remoteIP, duration)
 	if err != nil {
 		return nil, rpc.MakeError(rpc.InternalError, "Failed to create SSH ticket: "+err.Error(), nil)
 	}
 
-	// 向目标机 mango-agent 派发动态 authorized_keys 临时授权事件（携带单次临时公钥）
+	// 投递回执：agent 在线=delivered（直接写入 WS）；离线但曾建立 v2 会话=queued（入 5min TTL
+	// 队列，重连后回放）；从未以 v2 接入=offline。避免申请者拿着永不生效的私钥无从判断。
+	delivery := "offline"
+	if agent_runtime.IsV2Client(params.TargetClientUUID) {
+		delivery = "queued"
+	}
+	if agent_runtime.GetConnectedClient(params.TargetClientUUID) != nil {
+		delivery = "delivered"
+	}
 	agent_runtime.DispatchV2Event(params.TargetClientUUID, v2.MethodAgentSSHAuthorize, v2.SSHAuthorizeParams{
 		TicketID:   ticket.TicketID,
 		PublicKey:  ticket.PublicKey,
@@ -359,6 +355,7 @@ func clientRequestSSHTicket(ctx context.Context, req *rpc.JsonRpcRequest) (any, 
 	return map[string]any{
 		"ticket":      ticket,
 		"private_key": ephemPriv,
+		"delivery":    delivery,
 		"target_info": map[string]any{
 			"uuid": targetClient.UUID,
 			"name": targetClient.Name,

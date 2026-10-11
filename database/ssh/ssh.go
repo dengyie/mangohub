@@ -1,7 +1,6 @@
 package ssh
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -10,7 +9,6 @@ import (
 	"github.com/komari-monitor/komari/database/dbcore"
 	"github.com/komari-monitor/komari/database/models"
 	"github.com/komari-monitor/komari/utils/crypto"
-	"gorm.io/gorm"
 )
 
 // CreateSSHKey 创建并保存一个新的 SSH 密钥（私钥由 AES-256-GCM 加密存储）
@@ -72,14 +70,6 @@ func GetSSHKeyByID(id string) (*models.SSHKey, error) {
 	return &key, nil
 }
 
-// GetDecryptedPrivateKey 获取解密后的私钥字符串
-func GetDecryptedPrivateKey(key *models.SSHKey) (string, error) {
-	if key.PrivateKeyEnc == "" {
-		return "", errors.New("private key not available on hub")
-	}
-	return crypto.DecryptText(key.PrivateKeyEnc)
-}
-
 // ListSSHKeys 列出所有管理的 SSH 密钥（私钥不返回）
 func ListSSHKeys() ([]models.SSHKey, error) {
 	var keys []models.SSHKey
@@ -134,14 +124,6 @@ func CreateSSHTicket(sourceUUID, targetUUID, keyID, targetUser, targetHost strin
 	return ticket, privKey, nil
 }
 
-// GetTicketDecryptedPrivateKey 获取 Ticket 绑定的专属单次临时私钥
-func GetTicketDecryptedPrivateKey(ticket *models.SSHTicket) (string, error) {
-	if ticket.PrivateKeyEnc == "" {
-		return "", errors.New("ticket ephemeral private key not found")
-	}
-	return crypto.DecryptText(ticket.PrivateKeyEnc)
-}
-
 // GetSSHTicketByID 获取指定 Ticket
 func GetSSHTicketByID(ticketID string) (*models.SSHTicket, error) {
 	var ticket models.SSHTicket
@@ -168,21 +150,4 @@ func ExpireStaleTickets() error {
 	return dbcore.GetDBInstance().Model(&models.SSHTicket{}).
 		Where("status = ? AND expires_at < ?", "active", now).
 		Update("status", "expired").Error
-}
-
-// FindActiveTicket 查找活跃的互访 Ticket
-func FindActiveTicket(sourceUUID, targetUUID string) (*models.SSHTicket, error) {
-	var ticket models.SSHTicket
-	now := time.Now().UTC()
-	err := dbcore.GetDBInstance().
-		Where("source_client = ? AND target_client = ? AND status = ? AND expires_at > ?", sourceUUID, targetUUID, "active", now).
-		Order("expires_at desc").
-		First(&ticket).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &ticket, nil
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/komari-monitor/komari/database/models"
 	"github.com/komari-monitor/komari/database/ssh"
 	"github.com/komari-monitor/komari/pkg/rpc"
+	"github.com/komari-monitor/komari/utils/crypto"
 )
 
 func TestSSHManagementAndTicketFlow(t *testing.T) {
@@ -119,10 +120,14 @@ func TestSSHManagementAndTicketFlow(t *testing.T) {
 	if ticket.PublicKey == keyObj.PublicKey {
 		t.Fatalf("Security failure: Ticket is using global master public key instead of ephemeral public key!")
 	}
-	// 验证可通过解密助手解出临时私钥
-	decEphem, err := ssh.GetTicketDecryptedPrivateKey(ticket)
+	// 验证可通过 crypto.DecryptText 解出临时私钥（DB 内为密文，响应内存对象带密文字段）
+	decEphem, err := crypto.DecryptText(ticket.PrivateKeyEnc)
 	if err != nil || decEphem != ticketPriv {
 		t.Fatalf("Ticket decrypted ephemeral private key mismatch: err=%v", err)
+	}
+	// 无 agent 在线的测试环境：投递回执必须如实反映（不可谎报 delivered）
+	if tMap["delivery"] != "queued" && tMap["delivery"] != "offline" {
+		t.Fatalf("Unexpected delivery receipt: %v", tMap["delivery"])
 	}
 	if targetInfo["host"] != "10.144.144.21" {
 		t.Fatalf("Target host expected 10.144.144.21, got %v", targetInfo["host"])

@@ -7,6 +7,7 @@ import (
 	"github.com/komari-monitor/komari/cmd/flags"
 	"github.com/komari-monitor/komari/database/dbcore"
 	"github.com/komari-monitor/komari/database/models"
+	"github.com/komari-monitor/komari/utils/crypto"
 )
 
 func TestSSHKeyAndTicketCRUD(t *testing.T) {
@@ -31,9 +32,9 @@ func TestSSHKeyAndTicketCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetSSHKeyByID failed: %v", err)
 	}
-	decPriv, err := GetDecryptedPrivateKey(fetched)
+	decPriv, err := crypto.DecryptText(fetched.PrivateKeyEnc)
 	if err != nil {
-		t.Fatalf("GetDecryptedPrivateKey failed: %v", err)
+		t.Fatalf("decrypt stored private key failed: %v", err)
 	}
 	if decPriv != priv {
 		t.Fatalf("Decrypted private key mismatch")
@@ -53,17 +54,12 @@ func TestSSHKeyAndTicketCRUD(t *testing.T) {
 		t.Fatalf("Ticket status or ephemeral keypair invalid, got %+v", ticket)
 	}
 
-	decEphemPriv, err := GetTicketDecryptedPrivateKey(ticket)
+	decEphemPriv, err := crypto.DecryptText(ticket.PrivateKeyEnc)
 	if err != nil {
-		t.Fatalf("GetTicketDecryptedPrivateKey failed: %v", err)
+		t.Fatalf("decrypt ticket private key failed: %v", err)
 	}
 	if decEphemPriv != ephemPriv {
 		t.Fatalf("Decrypted ephemeral private key mismatch")
-	}
-
-	active, err := FindActiveTicket("client-a", "client-b")
-	if err != nil || active == nil {
-		t.Fatalf("FindActiveTicket failed: %v", err)
 	}
 
 	if err := RevokeSSHTicket(ticket.TicketID); err != nil {

@@ -21,6 +21,11 @@ var (
 	fixedSaltKey = []byte("mangohub:vault:kdf:salt:v1")
 )
 
+// kdfIterations 锁定为 10000：派生参数参与存量密文的解密，调整会使既有
+// ssh_keys / ssh_tickets 密文全部不可解。如需加强 KDF，必须配合带版本号
+// 的重加密迁移（读旧写新），不可直接改值。
+const kdfIterations = 10000
+
 // getMasterKey 返回用于 AES-256-GCM 的 32 字节密钥。
 // 优先使用环境变量 MANGOHUB_SECRET_KEY，使用 PBKDF2 进行派生并加读写锁保护。
 func getMasterKey() []byte {
@@ -48,7 +53,7 @@ func getMasterKey() []byte {
 		secret = "mangohub-internal-default-vault-key:" + host
 	}
 
-	derived := pbkdf2.Key([]byte(secret), fixedSaltKey, 10000, 32, sha256.New)
+	derived := pbkdf2.Key([]byte(secret), fixedSaltKey, kdfIterations, 32, sha256.New)
 	cachedKey = derived
 
 	k := make([]byte, 32)
