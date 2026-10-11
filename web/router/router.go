@@ -265,7 +265,7 @@ func registerAdminRoutes(r *gin.Engine) {
 			sshGroup.POST("/keys/create", jsonRpc.Bind("admin:createSSHKey"))
 			sshGroup.POST("/keys/generate", jsonRpc.Bind("admin:generateSSHKey"))
 			sshGroup.POST("/keys/delete", jsonRpc.Bind("admin:deleteSSHKey"))
-			sshGroup.POST("/ticket/request", jsonRpc.Bind("client:requestSSHTicket"))
-			sshGroup.POST("/ticket/revoke", jsonRpc.Bind("client:revokeSSHTicket"))
+			sshGroup.POST("/ticket/request", jsonRpc.Bind("admin:requestSSHTicket"))
+			sshGroup.POST("/ticket/revoke", jsonRpc.Bind("admin:revokeSSHTicket"))
 		}
 	}
