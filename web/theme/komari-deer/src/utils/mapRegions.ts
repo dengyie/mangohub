@@ -111,9 +111,8 @@ export function buildMapViewSummary(nodes: NodeBasicInfo[], liveData?: LiveData 
   let onlineNodes = 0, offlineNodes = 0, unknownNodes = 0;
 
   for (const node of nodes) {
-    const known = Boolean(liveData?.data[node.uuid]);
-    const isNodeOnline = known && Boolean(onlineSet?.has(node.uuid));
-    if (!known) unknownNodes++;
+    const isNodeOnline = hasLiveStatus && Boolean(onlineSet?.has(node.uuid));
+    if (!hasLiveStatus) unknownNodes++;
     else if (isNodeOnline) onlineNodes++;
     else offlineNodes++;
     const regionMeta = resolveRegionMeta(node.region);
@@ -128,7 +127,7 @@ export function buildMapViewSummary(nodes: NodeBasicInfo[], liveData?: LiveData 
     if (existing) {
       existing.nodes.push(node);
       existing.total += 1;
-      if (!known) existing.unknown++;
+      if (!hasLiveStatus) existing.unknown++;
       else if (isNodeOnline) existing.online++;
       else existing.offline++;
       existing.status = getRegionStatus(existing.online, existing.offline, existing.unknown);
@@ -143,9 +142,9 @@ export function buildMapViewSummary(nodes: NodeBasicInfo[], liveData?: LiveData 
       flagCode: regionMeta.flagCode,
       total: 1,
       online: isNodeOnline ? 1 : 0,
-      offline: known && !isNodeOnline ? 1 : 0,
-      unknown: known ? 0 : 1,
-      status: getRegionStatus(isNodeOnline ? 1 : 0, known && !isNodeOnline ? 1 : 0, known ? 0 : 1),
+      offline: hasLiveStatus && !isNodeOnline ? 1 : 0,
+      unknown: hasLiveStatus ? 0 : 1,
+      status: getRegionStatus(isNodeOnline ? 1 : 0, hasLiveStatus && !isNodeOnline ? 1 : 0, hasLiveStatus ? 0 : 1),
       nodes: [node],
     });
   }

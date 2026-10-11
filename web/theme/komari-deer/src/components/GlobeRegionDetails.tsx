@@ -15,7 +15,7 @@ export function GlobeRegionDetails({ region, liveData }: { region: MapRegionSumm
     <div className="globe-region-details__nodes">
       {region.nodes.map((node) => {
         const live = liveData?.data[node.uuid];
-        const status = !live ? "unknown" : online.has(node.uuid) ? "online" : "offline";
+        const status = !liveData ? "unknown" : online.has(node.uuid) ? "online" : "offline";
         const health = getNodeHealth(node, live, status, emptyPingStats());
         return <a key={node.uuid} href={`#/instance/${node.uuid}`} className="globe-region-details__node">
           <div><strong>{node.name}</strong><span className={`status-${status}`}>{t(`dashboard.${status}`)}</span></div>

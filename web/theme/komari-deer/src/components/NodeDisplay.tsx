@@ -36,7 +36,7 @@ const NodeDisplay = ({ nodes, liveData, isLive, children }: NodeDisplayProps) =>
     for (const node of nodes) {
       const live = liveData?.data[node.uuid];
       let status: NodeStatus = "unknown";
-      if (isLive && live) status = online.has(node.uuid) ? "online" : "offline";
+      if (isLive) status = online.has(node.uuid) ? "online" : "offline";
       const ping = status === "online" ? summarizeLivePing(live?.ping ?? {}, metadata.types) : emptyPingStats();
       result.set(node.uuid, { health: getNodeHealth(node, live, status, ping), ping });
     }

@@ -19,7 +19,7 @@ async (page) => {
     results.layouts.push(layout);
     await page.screenshot({path:`/Users/mango/project/codex/.playwright-mcp/mangohub-${width}.png`,fullPage:width === 1440});
   }
-  for (const [name, count] of [["Needs attention",4],["Offline",1],["CPU ≥90%",1],["RAM ≥90%",1],["Disk ≥90%",1],["Loss >5%",2],["No data",2],["All",8]]) {
+  for (const [name, count] of [["Needs attention",5],["Offline",2],["CPU ≥90%",1],["RAM ≥90%",1],["Disk ≥90%",1],["Loss >5%",2],["No data",1],["All",8]]) {
     await page.getByRole("button",{name,exact:true}).click();
     check(await cards.count() === count, `Incorrect filter: ${name}`);
     results.filters.push({name,count});
@@ -56,7 +56,7 @@ async (page) => {
   check(await cards.first().getByRole("alert").count() === 0, "History retry did not clear error");
   await cards.first().getByRole("button",{name:"Hide details",exact:true}).click();
   await page.locator("#dashboard-map canvas").waitFor();
-  check((await page.locator("#dashboard-map").innerText()).includes("Unknown"), "Map unknown state missing");
+  check((await page.locator("#dashboard-map").innerText()).includes("Offline"), "Map offline state missing");
   await page.getByRole("button",{name:"Node locations",exact:true}).click();
   check(await page.locator("#dashboard-map").count() === 0, "Map did not unmount");
   await page.getByRole("button",{name:"Table",exact:true}).click();
@@ -65,10 +65,10 @@ async (page) => {
   check(await page.evaluate(() => document.documentElement.scrollWidth === innerWidth), "Table caused document overflow");
   await page.getByRole("button",{name:"Grid",exact:true}).click();
   await page.getByRole("combobox",{name:"Node health filters"}).selectOption("offline");
-  check(await cards.count() === 1, "Mobile filter failed");
+  check(await cards.count() === 2, "Mobile filter failed");
   await cards.first().getByRole("button",{name:"Details",exact:true}).click();
   await cards.first().getByText("HTTP availability · 1 hour",{exact:true}).waitFor();
-  check((await cards.first().innerText()).includes("Last report:"), "Offline last-report timestamp missing");
+  check((await page.getByRole("link",{name:"London · Offline"}).innerText()).includes("Last report:"), "Offline last-report timestamp missing");
   const link = cards.first().getByRole("link",{name:"London · Offline"});
   await link.click();
   check(page.url().endsWith("#/instance/qa-node-3"), "Offline node navigation blocked");
