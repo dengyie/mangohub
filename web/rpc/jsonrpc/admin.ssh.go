@@ -335,8 +335,10 @@ func clientRequestSSHTicket(ctx context.Context, req *rpc.JsonRpcRequest) (any, 
 		return nil, rpc.MakeError(rpc.InternalError, "Failed to create SSH ticket: "+err.Error(), nil)
 	}
 
-	// 投递回执：agent 在线=delivered（直接写入 WS）；离线但曾建立 v2 会话=queued（入 5min TTL
-	// 队列，重连后回放）；从未以 v2 接入=offline。避免申请者拿着永不生效的私钥无从判断。
+	// 投递回执（advisory）：agent 在线=delivered（直接写入 WS）；离线但曾建立 v2 会话=queued
+	// （入 5min TTL 队列，重连后按序回放）；从未以 v2 接入=offline。避免申请者拿着永不生效的
+	// 私钥无从判断。注意 delivered 表示「派发时 agent 在线」，若该次 WS 写入失败会降级入队，
+	// 回执仍为 delivered——回执只描述传输意图，agent 侧写入结果不回传。
 	delivery := "offline"
 	if agent_runtime.IsV2Client(params.TargetClientUUID) {
 		delivery = "queued"
