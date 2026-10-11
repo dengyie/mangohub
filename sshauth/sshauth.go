@@ -44,11 +44,16 @@ func ResolveAuthorizedKeysPath(targetUsername string) (string, error) {
 	// Linux / Darwin / Unix:
 	var homeDir string
 	if targetUsername != "" {
-		if u, err := user.Lookup(targetUsername); err == nil && u.HomeDir != "" {
-			homeDir = u.HomeDir
+		u, err := user.Lookup(targetUsername)
+		if err != nil || u.HomeDir == "" {
+			// 显式指定的用户必须真实存在：查无此人时静默回落到 agent 当前用户
+			// （生产中为 root）会把临时公钥写进错误的 authorized_keys，直接报错。
+			return "", fmt.Errorf("resolve home directory: user %q not found", targetUsername)
 		}
+		homeDir = u.HomeDir
 	}
 	if homeDir == "" {
+		// 仅 targetUser 为空时才允许回落到 agent 运行账户
 		if u, err := user.Current(); err == nil && u.HomeDir != "" {
 			homeDir = u.HomeDir
 		} else if h, err := os.UserHomeDir(); err == nil && h != "" {
@@ -105,15 +110,16 @@ func writeAuthorizedKeysAtomic(authPath string, content []byte, targetUser strin
 		return fmt.Errorf("close temp auth file: %w", err)
 	}
 
-	if err := os.Rename(tmpName, authPath); err != nil {
-		return fmt.Errorf("atomic rename auth file: %w", err)
+	// Windows: sshd 对 administrators_authorized_keys 做 ACL 严格校验，
+	// 新建文件继承目录 ACL（含 Authenticated Users）会被整体拒读，
+	// 必须在 rename 前把临时文件收紧为仅 SYSTEM/Administrators（ACL 随 rename 保留）；
+	// 失败时原文件未被替换，状态保持一致。Unix 上为 no-op。
+	if err := hardenAuthorizedKeysACL(tmpName); err != nil {
+		return fmt.Errorf("harden auth file ACL: %w", err)
 	}
 
-	// Windows: sshd 对 administrators_authorized_keys 做ACL 严格校验，
-	// 重命名后的新文件继承目录 ACL（含 Authenticated Users）会被整体拒读，
-	// 必须显式收紧为仅 SYSTEM/Administrators；Unix 上为 no-op。
-	if err := hardenAuthorizedKeysACL(authPath); err != nil {
-		return fmt.Errorf("harden auth file ACL: %w", err)
+	if err := os.Rename(tmpName, authPath); err != nil {
+		return fmt.Errorf("atomic rename auth file: %w", err)
 	}
 
 	return nil
@@ -288,11 +294,14 @@ func ReconcileLeases(targetUser string) (int, error) {
 	// targetUser 为空时（常用于启动自愈）：
 	// 1. 扫描当前/默认用户 authorized_keys
 	totalCleaned := 0
+	var firstErr error
 	defaultPath, err := ResolveAuthorizedKeysPath("")
-	if err == nil {
-		if cleaned, _ := reconcileLeasesAtPath(defaultPath, ""); cleaned > 0 {
-			totalCleaned += cleaned
-		}
+	if err != nil {
+		firstErr = err
+	} else if cleaned, err := reconcileLeasesAtPath(defaultPath, ""); err != nil {
+		firstErr = err
+	} else {
+		totalCleaned += cleaned
 	}
 
 	// 2. 在 Unix 系统下，额外扫描系统所有真实用户的 /home/*/.ssh/authorized_keys 以及 /root/.ssh/authorized_keys
@@ -313,20 +322,24 @@ func ReconcileLeases(targetUser string) (int, error) {
 			if len(parts) >= 3 {
 				uName = parts[2]
 			}
-			if cleaned, _ := reconcileLeasesAtPath(p, uName); cleaned > 0 {
-				totalCleaned += cleaned
+			cleaned, err := reconcileLeasesAtPath(p, uName)
+			if err != nil && firstErr == nil {
+				firstErr = err
 			}
+			totalCleaned += cleaned
 		}
 
 		rootKey := "/root/.ssh/authorized_keys"
 		if _, seen := scannedPaths[rootKey]; !seen {
-			if cleaned, _ := reconcileLeasesAtPath(rootKey, "root"); cleaned > 0 {
-				totalCleaned += cleaned
+			cleaned, err := reconcileLeasesAtPath(rootKey, "root")
+			if err != nil && firstErr == nil {
+				firstErr = err
 			}
+			totalCleaned += cleaned
 		}
 	}
 
-	return totalCleaned, nil
+	return totalCleaned, firstErr
 }
 
 func reconcileLeasesAtPath(authPath, targetUser string) (int, error) {

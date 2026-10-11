@@ -3,7 +3,9 @@ package sshauth
 import (
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -106,5 +108,23 @@ func TestReconcileLeases(t *testing.T) {
 	}
 	if !strings.Contains(strFinal, adminKey) {
 		t.Fatalf("adminKey was wrongly purged!")
+	}
+}
+
+// 显式指定的目标用户必须真实存在：查无此人时报错而不是静默回落到
+// agent 当前用户（生产中为 root）的 authorized_keys。
+func TestResolveAuthorizedKeysPathUnknownUserErrors(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("windows 分支忽略 targetUsername，见 ResolveAuthorizedKeysPath 注释")
+	}
+	if _, err := user.Lookup("mangohub-definitely-missing-user"); err == nil {
+		t.Skip("测试环境意外存在该用户")
+	}
+	if _, err := ResolveAuthorizedKeysPath("mangohub-definitely-missing-user"); err == nil {
+		t.Fatalf("unknown explicit targetUser must return an error, not fall back")
+	}
+	// 空值仍允许回落到当前运行账户
+	if p, err := ResolveAuthorizedKeysPath(""); err != nil || p == "" {
+		t.Fatalf("empty targetUser should fall back to current user, got %q, %v", p, err)
 	}
 }
