@@ -41,3 +41,8 @@ func getTargetOwnership(authPath, targetUser string) (int, int) {
 	}
 	return -1, -1
 }
+
+// hardenAuthorizedKeysACL 在 Unix 上无需处理（属主与 0600 权限已满足 OpenSSH StrictModes）。
+func hardenAuthorizedKeysACL(path string) error {
+	return nil
+}

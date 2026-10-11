@@ -109,6 +109,13 @@ func writeAuthorizedKeysAtomic(authPath string, content []byte, targetUser strin
 		return fmt.Errorf("atomic rename auth file: %w", err)
 	}
 
+	// Windows: sshd 对 administrators_authorized_keys 做ACL 严格校验，
+	// 重命名后的新文件继承目录 ACL（含 Authenticated Users）会被整体拒读，
+	// 必须显式收紧为仅 SYSTEM/Administrators；Unix 上为 no-op。
+	if err := hardenAuthorizedKeysACL(authPath); err != nil {
+		return fmt.Errorf("harden auth file ACL: %w", err)
+	}
+
 	return nil
 }
 
