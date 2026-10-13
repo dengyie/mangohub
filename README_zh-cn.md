@@ -2,6 +2,8 @@
 
 [English](./README.md) | [简体中文](./README_zh-cn.md)
 
+![Mangohub 仪表盘](./docs/images/dashboard.png)
+
 **Mangohub** 是一套面向云原生与边缘基础设施的企业级可观测与运维管控平台。平台由高频低损耗的节点探针（`agent`）与集中控制面板（`hub`）构成，提供全维实时监控、零信任 Fleet SSH 凭据金库、边缘自适应防爆破限流、高精度磁盘 IO 剖析及算力任务管控能力。
 
 ---

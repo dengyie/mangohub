@@ -2,6 +2,8 @@
 
 [English](./README.md) | [简体中文](./README_zh-cn.md)
 
+![Mangohub Dashboard](./docs/images/dashboard.png)
+
 **Mangohub** is an enterprise-grade cloud and edge infrastructure observability platform. It combines a lightweight, high-performance node telemetry daemon (`agent`) with a powerful master control plane (`hub`), delivering real-time metrics, zero-trust fleet SSH key management, edge rate-limiting, and deep hardware/computational workload monitoring.
 
 ---
