@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/komari-monitor/komari/database/dbcore"
-	"github.com/komari-monitor/komari/database/models"
+	"github.com/dengyie/mangohub/hub/database/dbcore"
+	"github.com/dengyie/mangohub/hub/database/models"
 	"gorm.io/gorm"
 )
 

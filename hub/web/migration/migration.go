@@ -13,14 +13,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/komari-monitor/komari/database/dbcore"
-	"github.com/komari-monitor/komari/internal/metricstore"
-	appconfig "github.com/komari-monitor/komari/internal/config"
-	"github.com/komari-monitor/komari/internal/migrations"
-	"github.com/komari-monitor/komari/pkg/metric"
-	"github.com/komari-monitor/komari/web/api"
-	publicapi "github.com/komari-monitor/komari/web/api/public"
-	jsonrpc "github.com/komari-monitor/komari/web/rpc/jsonrpc"
+	"github.com/dengyie/mangohub/hub/database/dbcore"
+	"github.com/dengyie/mangohub/hub/internal/metricstore"
+	appconfig "github.com/dengyie/mangohub/hub/internal/config"
+	"github.com/dengyie/mangohub/hub/internal/migrations"
+	"github.com/dengyie/mangohub/hub/pkg/metric"
+	"github.com/dengyie/mangohub/hub/web/api"
+	publicapi "github.com/dengyie/mangohub/hub/web/api/public"
+	jsonrpc "github.com/dengyie/mangohub/hub/web/rpc/jsonrpc"
 	"gorm.io/gorm"
 )
 

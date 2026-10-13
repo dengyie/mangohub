@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/komari-monitor/komari-agent/dnsresolver"
-	"github.com/komari-monitor/komari-agent/utils"
+	"github.com/dengyie/mangohub/agent/dnsresolver"
+	"github.com/dengyie/mangohub/agent/utils"
 )
 
 // AutoDiscoveryConfig 自动发现配置结构体

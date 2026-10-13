@@ -6,14 +6,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/komari-monitor/komari/database/clients"
-	"github.com/komari-monitor/komari/database/dbcore"
-	"github.com/komari-monitor/komari/database/models"
-	messageevent "github.com/komari-monitor/komari/database/models/messageEvent"
-	"github.com/komari-monitor/komari/database/records"
-	"github.com/komari-monitor/komari/internal/scheduler"
-	logger "github.com/komari-monitor/komari/utils/log"
-	"github.com/komari-monitor/komari/utils/messageSender"
+	"github.com/dengyie/mangohub/hub/database/clients"
+	"github.com/dengyie/mangohub/hub/database/dbcore"
+	"github.com/dengyie/mangohub/hub/database/models"
+	messageevent "github.com/dengyie/mangohub/hub/database/models/messageEvent"
+	"github.com/dengyie/mangohub/hub/database/records"
+	"github.com/dengyie/mangohub/hub/internal/scheduler"
+	logger "github.com/dengyie/mangohub/hub/utils/log"
+	"github.com/dengyie/mangohub/hub/utils/messageSender"
 )
 
 // LoadNotificationService 管理定时器和任务

@@ -3,14 +3,14 @@ package jsonrpc
 import (
 	"context"
 
-	"github.com/komari-monitor/komari/database"
-	"github.com/komari-monitor/komari/database/models"
-	"github.com/komari-monitor/komari/internal/config"
-	"github.com/komari-monitor/komari/pkg/rpc"
-	"github.com/komari-monitor/komari/utils/messageSender"
-	msfactory "github.com/komari-monitor/komari/utils/messageSender/factory"
-	"github.com/komari-monitor/komari/web/oauth"
-	oauthfactory "github.com/komari-monitor/komari/web/oauth/factory"
+	"github.com/dengyie/mangohub/hub/database"
+	"github.com/dengyie/mangohub/hub/database/models"
+	"github.com/dengyie/mangohub/hub/internal/config"
+	"github.com/dengyie/mangohub/hub/pkg/rpc"
+	"github.com/dengyie/mangohub/hub/utils/messageSender"
+	msfactory "github.com/dengyie/mangohub/hub/utils/messageSender/factory"
+	"github.com/dengyie/mangohub/hub/web/oauth"
+	oauthfactory "github.com/dengyie/mangohub/hub/web/oauth/factory"
 )
 
 // admin.provider.go

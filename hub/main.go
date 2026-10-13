@@ -3,9 +3,9 @@ package main
 import (
 	"log/slog"
 
-	"github.com/komari-monitor/komari/cmd"
-	"github.com/komari-monitor/komari/utils"
-	logger "github.com/komari-monitor/komari/utils/log"
+	"github.com/dengyie/mangohub/hub/cmd"
+	"github.com/dengyie/mangohub/hub/utils"
+	logger "github.com/dengyie/mangohub/hub/utils/log"
 )
 
 func main() {
@@ -15,7 +15,7 @@ func main() {
 		logger.Setup(slog.LevelInfo)
 	}
 
-	logger.Infof("server", "Komari Monitor %s (hash: %s)", utils.CurrentVersion, utils.VersionHash)
+	logger.Infof("server", "Mangohub %s (hash: %s)", utils.CurrentVersion, utils.VersionHash)
 
 	cmd.Execute()
 }

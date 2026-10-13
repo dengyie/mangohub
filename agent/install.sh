@@ -322,7 +322,7 @@ log_info "Detected OS: ${GREEN}$os_name${NC}, Architecture: ${GREEN}$arch${NC}"
 file_name="komari-agent-${os_name}-${arch}"
 
 resolve_snapshot_version() {
-    snapshot_api_url="https://api.github.com/repos/komari-monitor/komari-agent/releases?per_page=100"
+    snapshot_api_url="https://api.github.com/repos/dengyie/mangohub/releases?per_page=100"
     if [ -n "$github_proxy" ]; then
         snapshot_api_urls="${github_proxy}/${snapshot_api_url} ${snapshot_api_url}"
     else
@@ -332,7 +332,7 @@ resolve_snapshot_version() {
     for api_url in $snapshot_api_urls; do
         if ! releases_json=$(curl -fsSL --connect-timeout 15 \
             -H "Accept: application/vnd.github+json" \
-            -H "User-Agent: komari-agent-installer" \
+            -H "User-Agent: mango-agent-installer" \
             "$api_url"); then
             releases_json=""
         fi
@@ -383,10 +383,10 @@ fi
 
 if [ -n "$github_proxy" ]; then
     # Use proxy for GitHub releases
-    download_url="${github_proxy}/https://github.com/dengyie/mango-agent/releases/${download_path}/${file_name}"
+    download_url="${github_proxy}/https://github.com/dengyie/mangohub/releases/${download_path}/${file_name}"
 else
     # Direct access to GitHub releases
-    download_url="https://github.com/dengyie/mango-agent/releases/${download_path}/${file_name}"
+    download_url="https://github.com/dengyie/mangohub/releases/${download_path}/${file_name}"
 fi
 
 log_step "Creating installation directory: ${GREEN}$target_dir${NC}"

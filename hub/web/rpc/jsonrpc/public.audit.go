@@ -10,9 +10,9 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/komari-monitor/komari/database/auditlog"
-	"github.com/komari-monitor/komari/internal/config"
-	"github.com/komari-monitor/komari/pkg/rpc"
+	"github.com/dengyie/mangohub/hub/database/auditlog"
+	"github.com/dengyie/mangohub/hub/internal/config"
+	"github.com/dengyie/mangohub/hub/pkg/rpc"
 )
 
 const (

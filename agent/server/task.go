@@ -20,9 +20,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/komari-monitor/komari-agent/dnsresolver"
-	v2 "github.com/komari-monitor/komari-agent/protocol/v2"
-	"github.com/komari-monitor/komari-agent/ws"
+	"github.com/dengyie/mangohub/agent/dnsresolver"
+	v2 "github.com/dengyie/mangohub/agent/protocol/v2"
+	"github.com/dengyie/mangohub/agent/ws"
 	ping "github.com/prometheus-community/pro-bing"
 )
 
@@ -471,14 +471,10 @@ func NewPingTask(conn *ws.SafeConn, taskID uint, pingType, pingTarget string) {
 	} else {
 		pingResult = int(latency)
 	}
-	finishedAt := time.Now()
-	wsPayload := v2.BuildPingResultPayload(taskID, pingType, pingResult, finishedAt)
-	// https://github.com/komari-monitor/komari/commit/eb87a4fc330b7d1c407fa4ff70177615a4f50a1f
-	// -1 代表丢包，服务端计算
-	//if pingResult == -1 {
-	//	return
-	//}
-	if conn == nil {
+		finishedAt := time.Now()
+		wsPayload := v2.BuildPingResultPayload(taskID, pingType, pingResult, finishedAt)
+		// -1 代表丢包，由服务端统一聚合丢包率与延迟统计
+		if conn == nil {
 		if err := postV2RPC(wsPayload); err != nil {
 			log.Printf("Failed to upload ping result over POST: %v", err)
 		}

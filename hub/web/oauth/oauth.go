@@ -3,13 +3,13 @@ package oauth
 import (
 	"encoding/json"
 	"fmt"
-	logger "github.com/komari-monitor/komari/utils/log"
+	logger "github.com/dengyie/mangohub/hub/utils/log"
 	"sync"
 
-	"github.com/komari-monitor/komari/database"
-	"github.com/komari-monitor/komari/database/models"
-	"github.com/komari-monitor/komari/internal/config"
-	"github.com/komari-monitor/komari/web/oauth/factory"
+	"github.com/dengyie/mangohub/hub/database"
+	"github.com/dengyie/mangohub/hub/database/models"
+	"github.com/dengyie/mangohub/hub/internal/config"
+	"github.com/dengyie/mangohub/hub/web/oauth/factory"
 )
 
 var (

@@ -1,17 +1,17 @@
 package notifier
 
 import (
-	logger "github.com/komari-monitor/komari/utils/log"
+	logger "github.com/dengyie/mangohub/hub/utils/log"
 	"sync"
 	"time"
 
-	"github.com/komari-monitor/komari/database/clients"
-	"github.com/komari-monitor/komari/database/dbcore"
-	"github.com/komari-monitor/komari/database/models"
-	messageevent "github.com/komari-monitor/komari/database/models/messageEvent"
-	"github.com/komari-monitor/komari/internal/config"
-	"github.com/komari-monitor/komari/utils/messageSender"
-	"github.com/komari-monitor/komari/utils/renewal"
+	"github.com/dengyie/mangohub/hub/database/clients"
+	"github.com/dengyie/mangohub/hub/database/dbcore"
+	"github.com/dengyie/mangohub/hub/database/models"
+	messageevent "github.com/dengyie/mangohub/hub/database/models/messageEvent"
+	"github.com/dengyie/mangohub/hub/internal/config"
+	"github.com/dengyie/mangohub/hub/utils/messageSender"
+	"github.com/dengyie/mangohub/hub/utils/renewal"
 )
 
 // notificationState 保存单个客户端的通知状态。

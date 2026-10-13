@@ -32,11 +32,11 @@ import (
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/require"
 	"github.com/gin-gonic/gin"
-	"github.com/komari-monitor/komari/database/models"
-	"github.com/komari-monitor/komari/internal/scheduler"
-	"github.com/komari-monitor/komari/pkg/jsruntime"
-	"github.com/komari-monitor/komari/pkg/rpc"
-	"github.com/komari-monitor/komari/web/connection"
+	"github.com/dengyie/mangohub/hub/database/models"
+	"github.com/dengyie/mangohub/hub/internal/scheduler"
+	"github.com/dengyie/mangohub/hub/pkg/jsruntime"
+	"github.com/dengyie/mangohub/hub/pkg/rpc"
+	"github.com/dengyie/mangohub/hub/web/connection"
 )
 
 // DataDir is the on-disk root for installed plugins, mirroring the theme

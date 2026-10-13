@@ -6,8 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/komari-monitor/komari/database/auditlog"
-	"github.com/komari-monitor/komari/web/connection"
+	"github.com/dengyie/mangohub/hub/database/auditlog"
+	"github.com/dengyie/mangohub/hub/web/connection"
 )
 
 func ForwardTerminal(id string, browser, agent *connection.SafeConn) {

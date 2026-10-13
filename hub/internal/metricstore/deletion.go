@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	logger "github.com/komari-monitor/komari/utils/log"
+	logger "github.com/dengyie/mangohub/hub/utils/log"
 
-	"github.com/komari-monitor/komari/pkg/metric"
+	"github.com/dengyie/mangohub/hub/pkg/metric"
 )
 
 // farFuture 返回一个足够远的未来时间，用于以 DeleteBefore 语义清空某指标的全部数据。

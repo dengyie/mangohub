@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/komari-monitor/komari/internal/plugin"
-	logger "github.com/komari-monitor/komari/utils/log"
-	"github.com/komari-monitor/komari/web/backup"
-	"github.com/komari-monitor/komari/web/upload"
+	"github.com/dengyie/mangohub/hub/internal/plugin"
+	logger "github.com/dengyie/mangohub/hub/utils/log"
+	"github.com/dengyie/mangohub/hub/web/backup"
+	"github.com/dengyie/mangohub/hub/web/upload"
 )
 
 func NewArchiveUploadHandler() *upload.Handler {

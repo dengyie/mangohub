@@ -7,13 +7,13 @@ import (
 	"path/filepath"
 
 	"github.com/gin-gonic/gin"
-	"github.com/komari-monitor/komari/database/dbcore"
-	"github.com/komari-monitor/komari/database/models"
-	"github.com/komari-monitor/komari/internal/config"
-	"github.com/komari-monitor/komari/internal/managedconfig"
-	"github.com/komari-monitor/komari/internal/metricstore"
-	logger "github.com/komari-monitor/komari/utils/log"
-	"github.com/komari-monitor/komari/web/public"
+	"github.com/dengyie/mangohub/hub/database/dbcore"
+	"github.com/dengyie/mangohub/hub/database/models"
+	"github.com/dengyie/mangohub/hub/internal/config"
+	"github.com/dengyie/mangohub/hub/internal/managedconfig"
+	"github.com/dengyie/mangohub/hub/internal/metricstore"
+	logger "github.com/dengyie/mangohub/hub/utils/log"
+	"github.com/dengyie/mangohub/hub/web/public"
 )
 
 func GetPublicInfo() (map[string]interface{}, error) {
@@ -34,10 +34,10 @@ func GetPublicInfo() (map[string]interface{}, error) {
 
 	// Apply defaults only when a key is missing.
 	if !hasKey("sitename") {
-		cst.Sitename = "Komari"
+		cst.Sitename = "Mangohub"
 	}
 	if !hasKey("description") {
-		cst.Description = "Komari Monitor, a simple server monitoring tool."
+		cst.Description = "Mangohub, Cloud & Edge Infrastructure Observability Platform."
 	}
 	if !hasKey("theme") {
 		cst.Theme = "default"
@@ -49,10 +49,10 @@ func GetPublicInfo() (map[string]interface{}, error) {
 	// Fallback defaults if we couldn't enumerate keys.
 	if allErr != nil {
 		if cst.Sitename == "" {
-			cst.Sitename = "Komari"
+			cst.Sitename = "Mangohub"
 		}
 		if cst.Description == "" {
-			cst.Description = "Komari Monitor, a simple server monitoring tool."
+			cst.Description = "Mangohub, Cloud & Edge Infrastructure Observability Platform."
 		}
 	}
 	retention, err := metricstore.GetRetentionSummary(context.Background())

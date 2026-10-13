@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/komari-monitor/komari/database/clients"
-	"github.com/komari-monitor/komari/database/models"
-	messageevent "github.com/komari-monitor/komari/database/models/messageEvent"
-	"github.com/komari-monitor/komari/internal/config"
-	"github.com/komari-monitor/komari/pkg/timeutil"
-	"github.com/komari-monitor/komari/utils/messageSender"
-	"github.com/komari-monitor/komari/utils/renewal"
+	"github.com/dengyie/mangohub/hub/database/clients"
+	"github.com/dengyie/mangohub/hub/database/models"
+	messageevent "github.com/dengyie/mangohub/hub/database/models/messageEvent"
+	"github.com/dengyie/mangohub/hub/internal/config"
+	"github.com/dengyie/mangohub/hub/pkg/timeutil"
+	"github.com/dengyie/mangohub/hub/utils/messageSender"
+	"github.com/dengyie/mangohub/hub/utils/renewal"
 )
 
 func CheckExpireScheduledWork() {

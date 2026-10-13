@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/komari-monitor/komari/cmd/flags"
-	"github.com/komari-monitor/komari/database/dbcore"
-	"github.com/komari-monitor/komari/web/api"
+	"github.com/dengyie/mangohub/hub/cmd/flags"
+	"github.com/dengyie/mangohub/hub/database/dbcore"
+	"github.com/dengyie/mangohub/hub/web/api"
 )
 
 // copyFile 复制单个文件到目标路径（会确保父目录存在）

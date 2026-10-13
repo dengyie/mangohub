@@ -4,10 +4,10 @@ import (
 	"errors"
 	"os"
 
-	appserver "github.com/komari-monitor/komari/internal/server"
-	logger "github.com/komari-monitor/komari/utils/log"
+	appserver "github.com/dengyie/mangohub/hub/internal/server"
+	logger "github.com/dengyie/mangohub/hub/utils/log"
 
-	"github.com/komari-monitor/komari/cmd/flags"
+	"github.com/dengyie/mangohub/hub/cmd/flags"
 	"github.com/spf13/cobra"
 )
 
@@ -21,9 +21,9 @@ var ServerCmd = &cobra.Command{
 }
 
 func init() {
-	// 从环境变量获取监听地址
-	listenAddr := GetEnv("KOMARI_LISTEN", "0.0.0.0:25774")
-	ServerCmd.PersistentFlags().StringVarP(&flags.Listen, "listen", "l", listenAddr, "监听地址 [env: KOMARI_LISTEN]")
+	// 从环境变量获取监听地址 (优先 MANGOHUB_LISTEN, 兼容 KOMARI_LISTEN)
+	listenAddr := GetEnv("MANGOHUB_LISTEN", GetEnv("KOMARI_LISTEN", "0.0.0.0:25774"))
+	ServerCmd.PersistentFlags().StringVarP(&flags.Listen, "listen", "l", listenAddr, "监听地址 [env: MANGOHUB_LISTEN / KOMARI_LISTEN]")
 	RootCmd.AddCommand(ServerCmd)
 }
 

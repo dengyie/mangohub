@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/komari-monitor/komari/database/auditlog"
-	"github.com/komari-monitor/komari/database/clients"
-	"github.com/komari-monitor/komari/pkg/rpc"
-	"github.com/komari-monitor/komari/web/filemanager"
+	"github.com/dengyie/mangohub/hub/database/auditlog"
+	"github.com/dengyie/mangohub/hub/database/clients"
+	"github.com/dengyie/mangohub/hub/pkg/rpc"
+	"github.com/dengyie/mangohub/hub/web/filemanager"
 )
 
 func init() {

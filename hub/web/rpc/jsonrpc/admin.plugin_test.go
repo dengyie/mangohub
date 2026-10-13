@@ -7,11 +7,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/komari-monitor/komari/cmd/flags"
-	"github.com/komari-monitor/komari/database/dbcore"
-	"github.com/komari-monitor/komari/database/models"
-	"github.com/komari-monitor/komari/internal/plugin"
-	"github.com/komari-monitor/komari/pkg/rpc"
+	"github.com/dengyie/mangohub/hub/cmd/flags"
+	"github.com/dengyie/mangohub/hub/database/dbcore"
+	"github.com/dengyie/mangohub/hub/database/models"
+	"github.com/dengyie/mangohub/hub/internal/plugin"
+	"github.com/dengyie/mangohub/hub/pkg/rpc"
 )
 
 // TestMain wires a shared in-memory SQLite database for tests that read and

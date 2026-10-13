@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
-	logger "github.com/komari-monitor/komari/utils/log"
+	logger "github.com/dengyie/mangohub/hub/utils/log"
 	"io"
 	"net/http"
 	"strings"
@@ -12,14 +12,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/komari-monitor/komari/database/clients"
-	"github.com/komari-monitor/komari/database/tasks"
-	v2 "github.com/komari-monitor/komari/protocol/v2"
-	"github.com/komari-monitor/komari/utils/notifier"
-	agent_runtime "github.com/komari-monitor/komari/web/agent"
-	"github.com/komari-monitor/komari/web/api"
-	"github.com/komari-monitor/komari/web/connection"
-	"github.com/komari-monitor/komari/web/filemanager"
+	"github.com/dengyie/mangohub/hub/database/clients"
+	"github.com/dengyie/mangohub/hub/database/tasks"
+	v2 "github.com/dengyie/mangohub/hub/protocol/v2"
+	"github.com/dengyie/mangohub/hub/utils/notifier"
+	agent_runtime "github.com/dengyie/mangohub/hub/web/agent"
+	"github.com/dengyie/mangohub/hub/web/api"
+	"github.com/dengyie/mangohub/hub/web/connection"
+	"github.com/dengyie/mangohub/hub/web/filemanager"
 )
 
 func readMaybeCompressedBody(r *http.Request) ([]byte, error) {

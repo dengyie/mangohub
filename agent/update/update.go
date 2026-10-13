@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	"github.com/komari-monitor/komari-agent/dnsresolver"
+	"github.com/dengyie/mangohub/agent/dnsresolver"
 	"github.com/rhysd/go-github-selfupdate/selfupdate"
 )
 
@@ -23,12 +23,12 @@ var ErrRestartRequired = errors.New("update installed; restart required")
 
 var (
 	CurrentVersion string = "Snapshot-260911-mining"
-	Repo           string = "dengyie/mango-agent"
+	Repo           string = "dengyie/mangohub"
 )
 
 const (
 	snapshotVersionPrefix = "Snapshot-"
-	containerMarkerPath   = "/.komari-agent-container"
+	containerMarkerPath   = "/.mango-agent-container"
 	githubAPIBaseURL      = "https://api.github.com"
 )
 

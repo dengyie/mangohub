@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/komari-monitor/komari/database/models"
-	"github.com/komari-monitor/komari/pkg/jsruntime"
-	"github.com/komari-monitor/komari/utils/messageSender/factory"
+	"github.com/dengyie/mangohub/hub/database/models"
+	"github.com/dengyie/mangohub/hub/pkg/jsruntime"
+	"github.com/dengyie/mangohub/hub/utils/messageSender/factory"
 )
 
 type JavaScriptSender struct {

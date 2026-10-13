@@ -1,9 +1,9 @@
 package ssh
 
 import (
-	"github.com/komari-monitor/komari/database/dbcore"
-	"github.com/komari-monitor/komari/database/models"
-	logger "github.com/komari-monitor/komari/utils/log"
+	"github.com/dengyie/mangohub/hub/database/dbcore"
+	"github.com/dengyie/mangohub/hub/database/models"
+	logger "github.com/dengyie/mangohub/hub/utils/log"
 )
 
 // EnsureDefaultFleetKey 确保数据库中至少存在一个合法的 Global Fleet 密钥。

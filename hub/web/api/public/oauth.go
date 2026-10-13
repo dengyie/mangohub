@@ -5,11 +5,11 @@ import (
 	"slices"
 
 	"github.com/gin-gonic/gin"
-	"github.com/komari-monitor/komari/database/accounts"
-	"github.com/komari-monitor/komari/database/auditlog"
-	"github.com/komari-monitor/komari/internal/config"
-	"github.com/komari-monitor/komari/utils"
-	"github.com/komari-monitor/komari/web/oauth"
+	"github.com/dengyie/mangohub/hub/database/accounts"
+	"github.com/dengyie/mangohub/hub/database/auditlog"
+	"github.com/dengyie/mangohub/hub/internal/config"
+	"github.com/dengyie/mangohub/hub/utils"
+	"github.com/dengyie/mangohub/hub/web/oauth"
 )
 
 // /api/oauth

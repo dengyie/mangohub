@@ -1,4 +1,4 @@
-# Windows PowerShell installation script for Komari Agent
+# Windows PowerShell installation script for Mango Agent
 
 # Logging functions with colors
 function Log-Info { param([string]$Message) Write-Host "$Message"    -ForegroundColor Cyan }
@@ -168,7 +168,7 @@ if ($InstallVersion -ne "") {
 }
 
 # Paths
-$BinaryName = "komari-agent-windows-$arch.exe"
+$BinaryName = "mango-agent-windows-$arch.exe"
 $AgentPath = Join-Path $InstallDir "komari-agent.exe"
 
 # Uninstall previous service and binary
@@ -270,7 +270,7 @@ else {
     # 我们的发布全部是 Pre-release（Snapshot-*），releases/latest API 只返回非 pre-release，
     # 对纯 pre-release 仓库会返回空（404/无 tag）→ 必须用列表 API 取最新的非 draft release。
     # 与 agent 内建 self-update (update.go snapshotTrack: releases?per_page=100) 逻辑一致。
-    $ApiUrl = "https://api.github.com/repos/dengyie/mango-agent/releases?per_page=100"
+    $ApiUrl = "https://api.github.com/repos/dengyie/mangohub/releases?per_page=100"
     try {
         Log-Step "Fetching latest release version from GitHub API..."
         $releases = Invoke-RestMethod -Uri $ApiUrl -UseBasicParsing
@@ -287,11 +287,11 @@ else {
         exit 1
     }
 }
-Log-Success "Installing Komari Agent version: $versionToInstall"
+Log-Success "Installing Mango Agent version: $versionToInstall"
 
 # Construct download URL
-$BinaryName = "komari-agent-windows-$arch.exe"
-$DownloadUrl = if ($GitHubProxy) { "$GitHubProxy/https://github.com/dengyie/mango-agent/releases/download/$versionToInstall/$BinaryName" } else { "https://github.com/dengyie/mango-agent/releases/download/$versionToInstall/$BinaryName" }
+$BinaryName = "mango-agent-windows-$arch.exe"
+$DownloadUrl = if ($GitHubProxy) { "$GitHubProxy/https://github.com/dengyie/mangohub/releases/download/$versionToInstall/$BinaryName" } else { "https://github.com/dengyie/mangohub/releases/download/$versionToInstall/$BinaryName" }
 
 # Download and install
 New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
@@ -312,7 +312,7 @@ $argString = $KomariArgs -join ' '
 $quotedAgentPath = "`"$AgentPath`""
 nssm install $ServiceName $quotedAgentPath $argString
 # Set display name and startup type using nssm
-nssm set $ServiceName DisplayName "Komari Agent Service"
+nssm set $ServiceName DisplayName "Mango Agent Service"
 nssm set $ServiceName Start SERVICE_AUTO_START
 nssm set $ServiceName AppExit Default Restart
 nssm set $ServiceName AppRestartDelay 5000
@@ -320,6 +320,6 @@ nssm set $ServiceName AppRestartDelay 5000
 nssm start $ServiceName
 Log-Success "Service $ServiceName installed and started using nssm."
 
-Log-Success "Komari Agent installation completed!"
+Log-Success "Mango Agent installation completed!"
 Log-Config "Service name: $ServiceName"
 Log-Config "Arguments: $argString"

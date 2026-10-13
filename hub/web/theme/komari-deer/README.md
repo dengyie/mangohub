@@ -88,6 +88,5 @@ with `komari-theme.json` and the theme assets expected by Komari.
 
 ## Acknowledgements
 
-- [tonyliuzj/komari-next](https://github.com/tonyliuzj/komari-next), the
-  original project this theme is based on
-- [komari-monitor/komari](https://github.com/komari-monitor/komari)
+- [tonyliuzj/komari-next](https://github.com/tonyliuzj/komari-next), frontend interactive prototype
+- [Mangohub](https://github.com/dengyie/mangohub) infrastructure repository

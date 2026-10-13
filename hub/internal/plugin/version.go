@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/komari-monitor/komari/utils"
+	"github.com/dengyie/mangohub/hub/utils"
 )
 
 // CheckKomariVersion validates a manifest komari constraint against the

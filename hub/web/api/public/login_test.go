@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/komari-monitor/komari/database/accounts"
+	"github.com/dengyie/mangohub/hub/database/accounts"
 	"github.com/stretchr/testify/assert"
 )
 

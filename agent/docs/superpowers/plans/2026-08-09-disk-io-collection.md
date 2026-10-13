@@ -1,16 +1,16 @@
-# Komari Agent 磁盘 IO 采集二开 — 实现计划
+# Mango Agent 磁盘 IO 采集模块 — 实现方案
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
-**Goal:** 给 komari-agent 增加磁盘 IO 速率采集与上报（`report.disk_io`），无关的 server 面板展示本次不做。
+**Goal:** 给 mango-agent 增加磁盘 IO 速率采集与上报（`report.disk_io`）。
 
 **Architecture:** 新增 `monitoring/unit/disk_io.go` 采集单元：用 gopsutil `disk.Partitions(true)` 做挂载点→块设备映射，`disk.IOCounters()` 读 `/proc/diskstats` 计数器，两次采样差值 ÷ 实际间隔算出速率；`monitoring/monitoring.go` 的 `report` 结构加 `disk_io` 字段填充。只读不写、失败不阻塞。
 
-**Tech Stack:** Go 1.24.0；`github.com/shirou/gopsutil/v4` v4.26.4（已在 go.mod，无新依赖）。
+**Tech Stack:** Go 1.24+；`github.com/shirou/gopsutil/v4` v4.26.4。
 
 ## Global Constraints
 
-- module path 保持 `github.com/komari-monitor/komari-agent`（不新增依赖，go.sum 不变）。
+- module path 为 `github.com/dengyie/mangohub/agent`。
 - 复用现有旗标 `AGENT_INCLUDE_MOUNTPOINTS`（`flags.IncludeMountpoints`），**不新造**磁盘 IO 专用旗标。
 - `HOST_PROC` 由 gopsutil v4 自动读取（`common.HostProc()` 检查该 env），**无需代码改动**。
 - **不得修改**现有 `report.Disk {total, used}` 容量逻辑、`isPhysicalDisk`、`DiskList`。

@@ -5,16 +5,16 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	logger "github.com/komari-monitor/komari/utils/log"
+	logger "github.com/dengyie/mangohub/hub/utils/log"
 	"math"
 	"sort"
 	"strings"
 	"time"
 
-	"github.com/komari-monitor/komari/internal/metricstore"
-	"github.com/komari-monitor/komari/database/models"
-	appconfig "github.com/komari-monitor/komari/internal/config"
-	"github.com/komari-monitor/komari/pkg/metric"
+	"github.com/dengyie/mangohub/hub/internal/metricstore"
+	"github.com/dengyie/mangohub/hub/database/models"
+	appconfig "github.com/dengyie/mangohub/hub/internal/config"
+	"github.com/dengyie/mangohub/hub/pkg/metric"
 	"gorm.io/gorm"
 )
 

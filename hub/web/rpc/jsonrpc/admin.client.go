@@ -3,12 +3,12 @@ package jsonrpc
 import (
 	"context"
 
-	"github.com/komari-monitor/komari/database/auditlog"
-	"github.com/komari-monitor/komari/database/clients"
-	"github.com/komari-monitor/komari/internal/metricstore"
-	"github.com/komari-monitor/komari/database/records"
-	"github.com/komari-monitor/komari/pkg/rpc"
-	agent_runtime "github.com/komari-monitor/komari/web/agent"
+	"github.com/dengyie/mangohub/hub/database/auditlog"
+	"github.com/dengyie/mangohub/hub/database/clients"
+	"github.com/dengyie/mangohub/hub/internal/metricstore"
+	"github.com/dengyie/mangohub/hub/database/records"
+	"github.com/dengyie/mangohub/hub/pkg/rpc"
+	agent_runtime "github.com/dengyie/mangohub/hub/web/agent"
 )
 
 // admin.client.go

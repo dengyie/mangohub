@@ -1,9 +1,9 @@
 package factory
 
 import (
-	logger "github.com/komari-monitor/komari/utils/log"
+	logger "github.com/dengyie/mangohub/hub/utils/log"
 
-	"github.com/komari-monitor/komari/utils/item"
+	"github.com/dengyie/mangohub/hub/utils/item"
 )
 
 var (

@@ -1,4 +1,6 @@
-# komari-agent
+# Mango Agent
+
+Mango Agent 是 Mangohub 统一监控平台的客户端探针守护进程。支持 Linux、macOS、Windows 以及各类容器化环境。
 
 ## 配置方式
 
@@ -7,7 +9,7 @@ agent 参数可以通过命令行参数、环境变量或 JSON 配置文件传�
 最小启动示例：
 
 ```bash
-./komari-agent --endpoint "https://example.com" --token "your-token"
+./mango-agent --endpoint "https://example.com" --token "your-token"
 ```
 
 使用环境变量：
@@ -15,13 +17,13 @@ agent 参数可以通过命令行参数、环境变量或 JSON 配置文件传�
 ```bash
 export AGENT_ENDPOINT="https://example.com"
 export AGENT_TOKEN="your-token"
-./komari-agent
+./mango-agent
 ```
 
 使用 JSON 配置文件：
 
 ```bash
-./komari-agent --config ./config.json
+./mango-agent --config ./config.json
 ```
 
 `config.json` 示例：
@@ -64,7 +66,7 @@ export AGENT_TOKEN="your-token"
 完整参数可运行：
 
 ```bash
-./komari-agent --help
+./mango-agent --help
 ```
 
 详见 `cmd/flags/flags.go` 及 `cmd/root.go`

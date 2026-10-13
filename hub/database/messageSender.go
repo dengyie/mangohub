@@ -1,8 +1,8 @@
 package database
 
 import (
-	"github.com/komari-monitor/komari/database/dbcore"
-	"github.com/komari-monitor/komari/database/models"
+	"github.com/dengyie/mangohub/hub/database/dbcore"
+	"github.com/dengyie/mangohub/hub/database/models"
 )
 
 func GetMessageSenderConfigByName(name string) (*models.MessageSenderProvider, error) {

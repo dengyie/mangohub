@@ -19,11 +19,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/komari-monitor/komari/database/dbcore"
-	"github.com/komari-monitor/komari/database/models"
-	"github.com/komari-monitor/komari/internal/config"
-	"github.com/komari-monitor/komari/internal/scheduler"
-	logger "github.com/komari-monitor/komari/utils/log"
+	"github.com/dengyie/mangohub/hub/database/dbcore"
+	"github.com/dengyie/mangohub/hub/database/models"
+	"github.com/dengyie/mangohub/hub/internal/config"
+	"github.com/dengyie/mangohub/hub/internal/scheduler"
+	logger "github.com/dengyie/mangohub/hub/utils/log"
 	"gorm.io/gorm"
 )
 

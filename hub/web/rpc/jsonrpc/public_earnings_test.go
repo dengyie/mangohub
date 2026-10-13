@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/komari-monitor/komari/cmd/flags"
-	"github.com/komari-monitor/komari/database/dbcore"
-	"github.com/komari-monitor/komari/database/models"
+	"github.com/dengyie/mangohub/hub/cmd/flags"
+	"github.com/dengyie/mangohub/hub/database/dbcore"
+	"github.com/dengyie/mangohub/hub/database/models"
 )
 
 // initEarningsTestDB 在独立临时库上初始化 dbcore（jsonrpc 包测试首个触库者）。

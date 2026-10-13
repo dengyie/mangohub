@@ -6,11 +6,11 @@ import (
 	"sort"
 	"time"
 
-	"github.com/komari-monitor/komari/database/clients"
-	"github.com/komari-monitor/komari/database/models"
-	recordsdb "github.com/komari-monitor/komari/database/records"
-	"github.com/komari-monitor/komari/database/tasks"
-	"github.com/komari-monitor/komari/pkg/rpc"
+	"github.com/dengyie/mangohub/hub/database/clients"
+	"github.com/dengyie/mangohub/hub/database/models"
+	recordsdb "github.com/dengyie/mangohub/hub/database/records"
+	"github.com/dengyie/mangohub/hub/database/tasks"
+	"github.com/dengyie/mangohub/hub/pkg/rpc"
 )
 
 func init() {

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/komari-monitor/komari/internal/plugin"
-	"github.com/komari-monitor/komari/pkg/rpc"
+	"github.com/dengyie/mangohub/hub/internal/plugin"
+	"github.com/dengyie/mangohub/hub/pkg/rpc"
 )
 
 func init() {

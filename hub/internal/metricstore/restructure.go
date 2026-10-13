@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/komari-monitor/komari/internal/config"
-	"github.com/komari-monitor/komari/pkg/metric"
+	"github.com/dengyie/mangohub/hub/internal/config"
+	"github.com/dengyie/mangohub/hub/pkg/metric"
 )
 
 // RestructureProgress is the authenticated guide's stable progress payload.

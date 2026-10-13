@@ -10,12 +10,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/komari-monitor/komari/cmd/flags"
-	"github.com/komari-monitor/komari/database/models"
-	"github.com/komari-monitor/komari/internal/config"
-	"github.com/komari-monitor/komari/internal/migrations"
-	"github.com/komari-monitor/komari/internal/sqlitetune"
-	logger "github.com/komari-monitor/komari/utils/log"
+	"github.com/dengyie/mangohub/hub/cmd/flags"
+	"github.com/dengyie/mangohub/hub/database/models"
+	"github.com/dengyie/mangohub/hub/internal/config"
+	"github.com/dengyie/mangohub/hub/internal/migrations"
+	"github.com/dengyie/mangohub/hub/internal/sqlitetune"
+	logger "github.com/dengyie/mangohub/hub/utils/log"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )

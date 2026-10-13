@@ -3,13 +3,13 @@ package migrations
 import (
 	"encoding/json"
 	"fmt"
-	logger "github.com/komari-monitor/komari/utils/log"
+	logger "github.com/dengyie/mangohub/hub/utils/log"
 	"reflect"
 	"strings"
 	"time"
 
-	"github.com/komari-monitor/komari/database/models"
-	appconfig "github.com/komari-monitor/komari/internal/config"
+	"github.com/dengyie/mangohub/hub/database/models"
+	appconfig "github.com/dengyie/mangohub/hub/internal/config"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )

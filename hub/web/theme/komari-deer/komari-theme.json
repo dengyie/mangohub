@@ -1,15 +1,15 @@
 {
-  "name": "Mango Hub",
+  "name": "Mangohub",
   "short": "komari-deer",
-  "description": "Mango Hub server monitoring dashboard (node card popover resource curves)",
+  "description": "Mangohub server monitoring dashboard (node card popover resource curves)",
   "version": "0.1.23",
-  "author": "dengyie",
-  "url": "https://github.com/dengyie/mango-hub",
+  "author": "Mangohub Contributors",
+  "url": "https://github.com/dengyie/mangohub",
   "preview": "preview.png",
   "configuration": {
     "name": "Theme Settings",
     "icon": "Palette",
-    "description": "Mango Hub theme settings",
+    "description": "Mangohub theme settings",
     "managedFields": [
       {
         "key": "language",

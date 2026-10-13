@@ -7,13 +7,13 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/komari-monitor/komari/database/auditlog"
-	"github.com/komari-monitor/komari/database/clients"
-	"github.com/komari-monitor/komari/database/tasks"
-	"github.com/komari-monitor/komari/pkg/rpc"
-	v2 "github.com/komari-monitor/komari/protocol/v2"
-	"github.com/komari-monitor/komari/utils"
-	agent_runtime "github.com/komari-monitor/komari/web/agent"
+	"github.com/dengyie/mangohub/hub/database/auditlog"
+	"github.com/dengyie/mangohub/hub/database/clients"
+	"github.com/dengyie/mangohub/hub/database/tasks"
+	"github.com/dengyie/mangohub/hub/pkg/rpc"
+	v2 "github.com/dengyie/mangohub/hub/protocol/v2"
+	"github.com/dengyie/mangohub/hub/utils"
+	agent_runtime "github.com/dengyie/mangohub/hub/web/agent"
 )
 
 // admin.mining.go

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/komari-monitor/komari/pkg/metric"
-	logger "github.com/komari-monitor/komari/utils/log"
+	"github.com/dengyie/mangohub/hub/pkg/metric"
+	logger "github.com/dengyie/mangohub/hub/utils/log"
 )
 
 const storeMigrationBatchSize = 500

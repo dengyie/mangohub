@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/komari-monitor/komari-agent/dnsresolver"
-	monitoring "github.com/komari-monitor/komari-agent/monitoring/unit"
-	"github.com/komari-monitor/komari-agent/protocol/transport"
-	v2 "github.com/komari-monitor/komari-agent/protocol/v2"
-	"github.com/komari-monitor/komari-agent/update"
+	"github.com/dengyie/mangohub/agent/dnsresolver"
+	monitoring "github.com/dengyie/mangohub/agent/monitoring/unit"
+	"github.com/dengyie/mangohub/agent/protocol/transport"
+	v2 "github.com/dengyie/mangohub/agent/protocol/v2"
+	"github.com/dengyie/mangohub/agent/update"
 
-	pkg_flags "github.com/komari-monitor/komari-agent/cmd/flags"
+	pkg_flags "github.com/dengyie/mangohub/agent/cmd/flags"
 )
 
 var flags = pkg_flags.GlobalConfig

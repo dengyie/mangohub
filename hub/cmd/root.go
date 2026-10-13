@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/komari-monitor/komari/cmd/flags"
+	"github.com/dengyie/mangohub/hub/cmd/flags"
 
 	"github.com/spf13/cobra"
 )
@@ -18,10 +18,10 @@ func GetEnv(key, defaultValue string) string {
 }
 
 var RootCmd = &cobra.Command{
-	Use:   "Komari",
-	Short: "Komari is a simple server monitoring tool",
-	Long: `Komari is a simple server monitoring tool. 
-Made by Akizon77 with love.`,
+	Use:   "mangohub",
+	Short: "Mangohub is a cloud and edge infrastructure observability platform",
+	Long: `Mangohub - Cloud & Edge Infrastructure Observability Platform.
+Unified metrics, dynamic zero-trust SSH management, edge-hardened telemetry, and computation monitoring.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.SetArgs([]string{"server"})
 		cmd.Execute()

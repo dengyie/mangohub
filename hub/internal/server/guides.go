@@ -3,13 +3,13 @@ package server
 import (
 	"context"
 
-	"github.com/komari-monitor/komari/database/dbcore"
-	"github.com/komari-monitor/komari/internal/metricstore"
-	"github.com/komari-monitor/komari/database/models"
-	"github.com/komari-monitor/komari/internal/migrations"
-	installweb "github.com/komari-monitor/komari/web/install"
-	migrationweb "github.com/komari-monitor/komari/web/migration"
-	recoveryweb "github.com/komari-monitor/komari/web/recovery"
+	"github.com/dengyie/mangohub/hub/database/dbcore"
+	"github.com/dengyie/mangohub/hub/internal/metricstore"
+	"github.com/dengyie/mangohub/hub/database/models"
+	"github.com/dengyie/mangohub/hub/internal/migrations"
+	installweb "github.com/dengyie/mangohub/hub/web/install"
+	migrationweb "github.com/dengyie/mangohub/hub/web/migration"
+	recoveryweb "github.com/dengyie/mangohub/hub/web/recovery"
 )
 
 // InstallRequired reports whether the instance still needs the first-run guide.

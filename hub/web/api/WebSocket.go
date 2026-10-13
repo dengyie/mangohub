@@ -10,9 +10,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/komari-monitor/komari/internal/config"
-	"github.com/komari-monitor/komari/web/connection"
-	"github.com/komari-monitor/komari/web/security"
+	"github.com/dengyie/mangohub/hub/internal/config"
+	"github.com/dengyie/mangohub/hub/web/connection"
+	"github.com/dengyie/mangohub/hub/web/security"
 )
 
 type WebSocketUpgradeOption func(*websocket.Upgrader)
@@ -76,7 +76,7 @@ func UpgradeSafeConn(c *gin.Context, options ...WebSocketUpgradeOption) (*connec
 
 func CheckWebSocketOrigin(r *http.Request) bool {
 	origin := r.Header.Get("Origin")
-	if strings.EqualFold(os.Getenv("KOMARI_WS_DISABLE_ORIGIN"), "true") {
+	if strings.EqualFold(os.Getenv("MANGOHUB_WS_DISABLE_ORIGIN"), "true") || strings.EqualFold(os.Getenv("KOMARI_WS_DISABLE_ORIGIN"), "true") {
 		return true
 	}
 	if security.IsAPIKeyRequest(r) {

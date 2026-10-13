@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/komari-monitor/komari/database/dbcore"
-	"github.com/komari-monitor/komari/database/models"
-	"github.com/komari-monitor/komari/internal/metricstore"
-	"github.com/komari-monitor/komari/pkg/metric"
-	"github.com/komari-monitor/komari/pkg/rpc"
-	v2 "github.com/komari-monitor/komari/protocol/v2"
+	"github.com/dengyie/mangohub/hub/database/dbcore"
+	"github.com/dengyie/mangohub/hub/database/models"
+	"github.com/dengyie/mangohub/hub/internal/metricstore"
+	"github.com/dengyie/mangohub/hub/pkg/metric"
+	"github.com/dengyie/mangohub/hub/pkg/rpc"
+	v2 "github.com/dengyie/mangohub/hub/protocol/v2"
 )
 
 // useMetricsTestStore 挂载一块内存 metric store 供 API 层集成测试使用。

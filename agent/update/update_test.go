@@ -222,7 +222,7 @@ func TestSnapshotUpdateReturnsRestartRequired(t *testing.T) {
 	CurrentVersion = "Snapshot-2607061100"
 	t.Cleanup(func() { CurrentVersion = oldVersion })
 	oldRepo := Repo
-	Repo = "komari-monitor/komari-agent"
+	Repo = "dengyie/mangohub"
 	t.Cleanup(func() { Repo = oldRepo })
 
 	assetName := expectedAssetName(runtime.GOOS, runtime.GOARCH)
@@ -239,8 +239,8 @@ func TestSnapshotUpdateReturnsRestartRequired(t *testing.T) {
 		},
 	}
 	lister := func(owner, repo string) ([]githubRelease, error) {
-		if owner != "komari-monitor" || repo != "komari-agent" {
-			t.Fatalf("list releases repo = %s/%s, want komari-monitor/komari-agent", owner, repo)
+		if owner != "dengyie" || repo != "mangohub" {
+			t.Fatalf("list releases repo = %s/%s, want dengyie/mangohub", owner, repo)
 		}
 		return []githubRelease{release}, nil
 	}

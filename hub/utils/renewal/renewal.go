@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/komari-monitor/komari/database/auditlog"
-	"github.com/komari-monitor/komari/database/clients"
-	"github.com/komari-monitor/komari/database/models"
-	messageevent "github.com/komari-monitor/komari/database/models/messageEvent"
-	"github.com/komari-monitor/komari/pkg/timeutil"
-	"github.com/komari-monitor/komari/utils/messageSender"
-	agent_runtime "github.com/komari-monitor/komari/web/agent"
+	"github.com/dengyie/mangohub/hub/database/auditlog"
+	"github.com/dengyie/mangohub/hub/database/clients"
+	"github.com/dengyie/mangohub/hub/database/models"
+	messageevent "github.com/dengyie/mangohub/hub/database/models/messageEvent"
+	"github.com/dengyie/mangohub/hub/pkg/timeutil"
+	"github.com/dengyie/mangohub/hub/utils/messageSender"
+	agent_runtime "github.com/dengyie/mangohub/hub/web/agent"
 )
 
 func CheckAndAutoRenewal(client models.Client) {

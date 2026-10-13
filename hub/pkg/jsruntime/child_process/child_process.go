@@ -17,10 +17,10 @@ import (
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/buffer"
 	"github.com/dop251/goja_nodejs/require"
-	"github.com/komari-monitor/komari/pkg/jsruntime/events"
-	"github.com/komari-monitor/komari/pkg/jsruntime/fs"
-	"github.com/komari-monitor/komari/pkg/jsruntime/internal/bridge"
-	"github.com/komari-monitor/komari/pkg/jsruntime/internal/writequeue"
+	"github.com/dengyie/mangohub/hub/pkg/jsruntime/events"
+	"github.com/dengyie/mangohub/hub/pkg/jsruntime/fs"
+	"github.com/dengyie/mangohub/hub/pkg/jsruntime/internal/bridge"
+	"github.com/dengyie/mangohub/hub/pkg/jsruntime/internal/writequeue"
 )
 
 type childCommandOptions struct {

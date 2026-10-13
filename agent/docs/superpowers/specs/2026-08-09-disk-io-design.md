@@ -1,31 +1,24 @@
-# komari-agent 磁盘 IO 采集二开 — 设计
+# Mango Agent 磁盘 IO 采集模块 — 设计规范
 
 - 日期:2026-08-09
-- 状态:已获用户确认(方案 A)
-- 基线:komari-agent `1186aafb`(tag `Snapshot-2608070858`,2026-08-07)
+- 状态:已归档
 - 依赖:gopsutil v4.26.4(已在 go.mod)
 
-## 1. 背景与问题
+## 1. 背景与目标
 
-Beszel→Komari 迁移背景下,现有 Beszel 的磁盘 IO 数据在迁到 Komari 后会丢:
+为了支持 Linux 主机和容器多块盘高精度 IOPS 与读写速率统计，Agent 需要采集物理块设备与挂载点映射的 IO 计数器（读 `/proc/diskstats`），计算采样窗口内的增量速率并上报给 Mangohub 主控。
 
-- 2026-07-20 给 tebi/pxed 做的 vda5 IO 根治(通过 FILESYSTEM 把 `/tmp/mnt` 映射到块设备 vda5,再读 `/proc/diskstats`)
-- googlevps 的 sda1 映射(`/hostfs` → sda1)
+**目标**: 给 agent 增加磁盘 IO 采集与上报。
 
-Komari agent 的 `monitoring/monitoring.go` 中 `report.Disk` 只有 `{total, used}`(usageReport),不读 `/proc/diskstats`,因此这些磁盘 IO 曲线无法在 Komari 复现。
+## 2. 范围
 
-**目标**:给 agent 增加磁盘 IO 采集与上报;server(面板)本次不改。
+- 采集磁盘 IO 读写速率与 IOPS。
+- 保证挂载点映射到实际块设备（如 `/tmp/mnt` 映射到 `vda5`）。
+- 异常场景优雅降级，不阻塞其他监控指标。
 
-## 2. 范围(非目标)
+## 3. 方案
 
-- ❌ server 端面板展示磁盘 IO 曲线 —— 后续单独做
-- ❌ 告警 —— 用户明确「告警不用二开」
-- ❌ 修改现有 `report.Disk {total, used}` 容量逻辑
-- ❌ cgroup 探针等无关功能
-
-## 3. 方案(已选:方案 A)
-
-用 gopsutil 读 `/proc/diskstats` 的计数器(`disk.IOCounters`),用 `disk.Partitions(true)` 做挂载点→块设备映射,按配置的挂载点过滤,再以「两次采样差值 ÷ 实际间隔」算出速率。与 Beszel 根治思路一致,但**不引入新的 FILESYSTEM env**——映射直接来自系统分区表,配置复用 agent 现有挂载点白名单。
+用 gopsutil 读 `/proc/diskstats` 的计数器(`disk.IOCounters`),用 `disk.Partitions(true)` 做挂载点→块设备映射,按配置的挂载点过滤,再以「两次采样差值 ÷ 实际间隔」算出速率。映射直接来自系统分区表,配置复用 agent 现有挂载点白名单。
 
 ## 4. 架构与组件
 
@@ -113,9 +106,9 @@ report.DiskIO = [ {device, mountpoint, read_bytes, write_bytes, read_iops, write
 - `go vet ./...` + `go build ./...` 通过
 - 本地 `go test ./monitoring/...` 通过
 
-## 10. 已知决策与遗留
+## 10. 架构决策
 
-- 复用 `AGENT_INCLUDE_MOUNTPOINTS`,**不新造**磁盘 IO 专用旗标(初稿的 `AGENT_DISK_IO_MOUNTPOINTS` 废弃)。
-- module path 保持 `github.com/komari-monitor/komari-agent`(二开 fork 常规做法,保持 go.sum/内部 import 不变)。
-- **部署注意**:agent 默认 6h 自动更新,指向上游 komari-monitor;自建 repo 部署时需 `--disable-auto-update`,避免二开被上游覆盖。此属部署阶段,本次代码不处理。
-- **平台差异(macOS/开发机)**:`disk.Partitions` 在 macOS 上报设备名带切片后缀(`/dev/disk3s1s1`),而 `disk.IOCounters()` 只返回整盘键(`disk0`/`disk4`),两者对不上 → `disk_io` 恒为空数组。**仅影响开发机**,Linux(beszel→komari 迁移目标 tebi/pxed/googlevps)上设备名一致(`vda5`/`sda1`),设计如此,不是 bug;无需为 macOS 加匹配逻辑。
+- 复用 `AGENT_INCLUDE_MOUNTPOINTS` 挂载点白名单。
+- module path 为 `github.com/dengyie/mangohub/agent`。
+- agent 自更新指向上游自建源 `dengyie/mangohub`。
+- **平台差异(macOS/开发机)**:`disk.Partitions` 在 macOS 上报设备名带切片后缀(`/dev/disk3s1s1`),而 `disk.IOCounters()` 只返回整盘键(`disk0`/`disk4`),两者对不上 → `disk_io` 恒为空数组。**仅影响开发机**,Linux(生产目标主机)上设备名一致(`vda5`/`sda1`),设计如此。

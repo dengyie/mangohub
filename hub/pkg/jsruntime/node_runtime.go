@@ -7,9 +7,9 @@ import (
 
 	"github.com/dop251/goja_nodejs/buffer"
 	"github.com/dop251/goja_nodejs/require"
-	"github.com/komari-monitor/komari/pkg/jsruntime/events"
-	osmodule "github.com/komari-monitor/komari/pkg/jsruntime/os"
-	streammodule "github.com/komari-monitor/komari/pkg/jsruntime/stream"
+	"github.com/dengyie/mangohub/hub/pkg/jsruntime/events"
+	osmodule "github.com/dengyie/mangohub/hub/pkg/jsruntime/os"
+	streammodule "github.com/dengyie/mangohub/hub/pkg/jsruntime/stream"
 )
 
 type nodeFileHandle struct {

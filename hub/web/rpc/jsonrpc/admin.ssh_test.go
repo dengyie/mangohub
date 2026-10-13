@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/komari-monitor/komari/cmd/flags"
-	"github.com/komari-monitor/komari/database/dbcore"
-	"github.com/komari-monitor/komari/database/models"
-	"github.com/komari-monitor/komari/database/ssh"
-	"github.com/komari-monitor/komari/pkg/rpc"
-	"github.com/komari-monitor/komari/utils/crypto"
+	"github.com/dengyie/mangohub/hub/cmd/flags"
+	"github.com/dengyie/mangohub/hub/database/dbcore"
+	"github.com/dengyie/mangohub/hub/database/models"
+	"github.com/dengyie/mangohub/hub/database/ssh"
+	"github.com/dengyie/mangohub/hub/pkg/rpc"
+	"github.com/dengyie/mangohub/hub/utils/crypto"
 )
 
 func TestSSHManagementAndTicketFlow(t *testing.T) {

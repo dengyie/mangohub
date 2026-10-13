@@ -6,13 +6,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/komari-monitor/komari/database/clients"
-	"github.com/komari-monitor/komari/database/models"
-	messageevent "github.com/komari-monitor/komari/database/models/messageEvent"
-	"github.com/komari-monitor/komari/internal/config"
-	logger "github.com/komari-monitor/komari/utils/log"
-	"github.com/komari-monitor/komari/utils/messageSender"
-	agent_runtime "github.com/komari-monitor/komari/web/agent"
+	"github.com/dengyie/mangohub/hub/database/clients"
+	"github.com/dengyie/mangohub/hub/database/models"
+	messageevent "github.com/dengyie/mangohub/hub/database/models/messageEvent"
+	"github.com/dengyie/mangohub/hub/internal/config"
+	logger "github.com/dengyie/mangohub/hub/utils/log"
+	"github.com/dengyie/mangohub/hub/utils/messageSender"
+	agent_runtime "github.com/dengyie/mangohub/hub/web/agent"
 	cache "github.com/patrickmn/go-cache"
 )
 

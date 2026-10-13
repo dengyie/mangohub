@@ -1,10 +1,10 @@
 package oauth
 
 import (
-	_ "github.com/komari-monitor/komari/web/oauth/factory"
-	_ "github.com/komari-monitor/komari/web/oauth/generic"
-	_ "github.com/komari-monitor/komari/web/oauth/github"
-	_ "github.com/komari-monitor/komari/web/oauth/qq"
+	_ "github.com/dengyie/mangohub/hub/web/oauth/factory"
+	_ "github.com/dengyie/mangohub/hub/web/oauth/generic"
+	_ "github.com/dengyie/mangohub/hub/web/oauth/github"
+	_ "github.com/dengyie/mangohub/hub/web/oauth/qq"
 )
 
 func All() {

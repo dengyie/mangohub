@@ -16,15 +16,15 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/komari-monitor/komari-agent/dnsresolver"
-	"github.com/komari-monitor/komari-agent/monitoring/netstatic"
-	monitoring "github.com/komari-monitor/komari-agent/monitoring/unit"
-	"github.com/komari-monitor/komari-agent/server"
-	"github.com/komari-monitor/komari-agent/sshauth"
-	"github.com/komari-monitor/komari-agent/update"
+	"github.com/dengyie/mangohub/agent/dnsresolver"
+	"github.com/dengyie/mangohub/agent/monitoring/netstatic"
+	monitoring "github.com/dengyie/mangohub/agent/monitoring/unit"
+	"github.com/dengyie/mangohub/agent/server"
+	"github.com/dengyie/mangohub/agent/sshauth"
+	"github.com/dengyie/mangohub/agent/update"
 	"github.com/spf13/cobra"
 
-	pkg_flags "github.com/komari-monitor/komari-agent/cmd/flags"
+	pkg_flags "github.com/dengyie/mangohub/agent/cmd/flags"
 )
 
 var flags = pkg_flags.GlobalConfig
@@ -32,9 +32,9 @@ var flags = pkg_flags.GlobalConfig
 var warningPanelHost, warningRunAsUser string
 
 var RootCmd = &cobra.Command{
-	Use:   "komari-agent",
-	Short: "komari agent",
-	Long:  `komari agent`,
+	Use:   "mango-agent",
+	Short: "mango-agent is the node telemetry and zero-trust management daemon for Mangohub",
+	Long:  `mango-agent gathers high-frequency telemetry (CPU, RAM, disk IO, network, latency, miners) and executes zero-trust management commands.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Notification helpers must not load the service's config or credentials.
 		if flags.ShowWarning {

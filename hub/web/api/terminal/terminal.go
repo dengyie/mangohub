@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/komari-monitor/komari/web/connection"
+	"github.com/dengyie/mangohub/hub/web/connection"
 )
 
 type TerminalSession struct {

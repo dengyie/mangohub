@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/komari-monitor/komari/database/models"
-	appconfig "github.com/komari-monitor/komari/internal/config"
+	"github.com/dengyie/mangohub/hub/database/models"
+	appconfig "github.com/dengyie/mangohub/hub/internal/config"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )

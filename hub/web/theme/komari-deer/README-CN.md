@@ -84,5 +84,5 @@ npm run build
 
 ## 鸣谢
 
-- [tonyliuzj/komari-next](https://github.com/tonyliuzj/komari-next)，本主题基于该原项目开发
-- [komari-monitor/komari](https://github.com/komari-monitor/komari)
+- [tonyliuzj/komari-next](https://github.com/tonyliuzj/komari-next)，本主题交互原型参考
+- [Mangohub](https://github.com/dengyie/mangohub) 统一基础设施平台仓库

@@ -8,11 +8,12 @@ ARG TARGETARCH
 
 RUN apk add --no-cache ca-certificates curl tzdata
 
-COPY --chmod=755 komari-${TARGETOS}-${TARGETARCH} /app/komari
+COPY --chmod=755 mangohub-${TARGETOS}-${TARGETARCH} /app/mangohub
 
 ENV GIN_MODE=release
+ENV MANGOHUB_LISTEN=0.0.0.0:25774
 ENV KOMARI_LISTEN=0.0.0.0:25774
 
 EXPOSE 25774
 
-CMD ["/app/komari", "server"]
+CMD ["/app/mangohub", "server"]

@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/komari-monitor/komari/database/models"
-	"github.com/komari-monitor/komari/internal/scheduler"
-	v2 "github.com/komari-monitor/komari/protocol/v2"
-	agent_runtime "github.com/komari-monitor/komari/web/agent"
+	"github.com/dengyie/mangohub/hub/database/models"
+	"github.com/dengyie/mangohub/hub/internal/scheduler"
+	v2 "github.com/dengyie/mangohub/hub/protocol/v2"
+	agent_runtime "github.com/dengyie/mangohub/hub/web/agent"
 )
 
 // PingTaskManager 管理定时器和任务

@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/komari-monitor/komari-agent/cmd"
+	"github.com/dengyie/mangohub/agent/cmd"
 )
 
 func main() {

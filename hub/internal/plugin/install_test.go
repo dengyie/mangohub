@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/komari-monitor/komari/database/models"
+	"github.com/dengyie/mangohub/hub/database/models"
 )
 
 func TestInstallZipExtractsValidPlugin(t *testing.T) {

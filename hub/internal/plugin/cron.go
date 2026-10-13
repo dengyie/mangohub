@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 
 	"github.com/dop251/goja"
-	"github.com/komari-monitor/komari/internal/scheduler"
+	"github.com/dengyie/mangohub/hub/internal/scheduler"
 )
 
 // cronJobSeq gives every registered cron job a process-unique id. Job names
