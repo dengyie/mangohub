@@ -28,7 +28,7 @@ jobs:
       - name: Build Agent
         run: |
           cd agent
-          CGO_ENABLED=0 go build -trimpath -o ../bin/mango-agent .
+          CGO_ENABLED=0 go build -trimpath -o ../bin/mangohub-agent .
 
       - name: Run Agent Tests
         run: |

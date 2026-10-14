@@ -440,12 +440,9 @@ func doInitialize() error {
 			} else {
 				logger.Infof("dbcore", "[restore] backup.zip removed")
 			}
-			// 8. 删除标记
-			if rmErr := os.Remove("./data/komari-backup-markup"); rmErr != nil {
-				logger.Errorf("dbcore", "[restore] failed to remove komari-backup-markup: %v", rmErr)
-			} else {
-				logger.Infof("dbcore", "[restore] komari-backup-markup removed")
-			}
+				// 8. 删除标记
+				_ = os.Remove("./data/mangohub-backup-markup")
+				_ = os.Remove("./data/komari-backup-markup")
 		}
 	}()
 

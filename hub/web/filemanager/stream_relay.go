@@ -168,10 +168,17 @@ func (transfer *streamTransfer) close(err error) {
 
 func lookupStreamTransfer(c *gin.Context) (*streamTransfer, error) {
 	id := strings.TrimSpace(c.Param("id"))
-	if headerID := strings.TrimSpace(c.GetHeader("X-Komari-Transfer-ID")); headerID != "" && headerID != id {
+	headerID := strings.TrimSpace(c.GetHeader("X-Mangohub-Transfer-ID"))
+	if headerID == "" {
+		headerID = strings.TrimSpace(c.GetHeader("X-Komari-Transfer-ID"))
+	}
+	if headerID != "" && headerID != id {
 		return nil, errors.New("file transfer id does not match request")
 	}
-	token := strings.TrimSpace(c.GetHeader(streamTokenHeader))
+	token := strings.TrimSpace(c.GetHeader("X-Mangohub-Transfer-Token"))
+	if token == "" {
+		token = strings.TrimSpace(c.GetHeader(streamTokenHeader))
+	}
 	if token == "" {
 		token = strings.TrimSpace(c.Query("transfer_token"))
 	}

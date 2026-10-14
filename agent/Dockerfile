@@ -6,12 +6,13 @@ WORKDIR /app
 ARG TARGETOS
 ARG TARGETARCH
 
-COPY --chmod=755 mango-agent-${TARGETOS}-${TARGETARCH} /app/mango-agent
+COPY --chmod=755 mangohub-agent-${TARGETOS}-${TARGETARCH}* /app/mangohub-agent
 
-RUN touch /.mango-agent-container
+RUN ln -sf /app/mangohub-agent /app/mango-agent && \
+    touch /.mangohub-agent-container /.mango-agent-container
 
-ENTRYPOINT ["/app/mango-agent"]
+ENTRYPOINT ["/app/mangohub-agent"]
 # 运行时请指定参数
 # Please specify parameters at runtime.
-# eg: docker run mango-agent -e example.com -t token
+# eg: docker run mangohub-agent -e example.com -t token
 CMD ["--help"]

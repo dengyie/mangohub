@@ -1,15 +1,29 @@
 #!/bin/bash
-# komari-agent 原子部署(Bohrium 无 systemd,走 watchdog pidfile 换 bin 重启)
+# mangohub-agent 原子部署(Bohrium 无 systemd,走 watchdog pidfile 换 bin 重启)
 # 用法: deploy-agent.sh <host-dir> [new-bin-path]
 #   <host-dir>     例 /personal/beszel/tebi 或 /personal/beszel/pxed
-#   [new-bin-path] 缺省 /tmp/komari-agent.new(经 scp 上传的新二进制)
+#   [new-bin-path] 缺省 /tmp/mangohub-agent.new (兼容 /tmp/komari-agent.new)
 set -uo pipefail
 DIR="${1:?host-dir required, e.g. /personal/beszel/tebi}"
-NEW="${2:-/tmp/komari-agent.new}"
-BIN="/usr/local/bin/komari-agent"
-LOOP="$DIR/komari-agent-loop.sh"
-PIDF="$DIR/komari-agent-loop.pid"
-LOGF="$DIR/komari-agent-loop.log"
+NEW="${2:-}"
+if [ -z "$NEW" ]; then
+  if [ -f /tmp/mangohub-agent.new ]; then
+    NEW="/tmp/mangohub-agent.new"
+  elif [ -f /tmp/komari-agent.new ]; then
+    NEW="/tmp/komari-agent.new"
+  else
+    NEW="/tmp/mangohub-agent.new"
+  fi
+fi
+
+BIN="/usr/local/bin/mangohub-agent"
+LEGACY_BIN="/usr/local/bin/komari-agent"
+LOOP="$DIR/mangohub-agent-loop.sh"
+[ -f "$LOOP" ] || LOOP="$DIR/komari-agent-loop.sh"
+PIDF="$DIR/mangohub-agent-loop.pid"
+[ -f "$PIDF" ] || PIDF="$DIR/komari-agent-loop.pid"
+LOGF="$DIR/mangohub-agent-loop.log"
+[ -f "$LOGF" ] || LOGF="$DIR/komari-agent-loop.log"
 TS(){ date "+%Y-%m-%d %H:%M:%S"; }
 log(){ echo "[$(TS)] $*" >> "$LOGF"; }
 
@@ -30,16 +44,19 @@ if [ -f "$PIDF" ]; then
   fi
   rm -f "$PIDF"
 fi
-if pgrep -f '^/usr/local/bin/komari-agent$' >/dev/null; then
-  log "deploy: killing stray agent"
-  pkill -9 -f '^/usr/local/bin/komari-agent$'
-  sleep 1
-fi
+for pattern in '^/usr/local/bin/mangohub-agent$' '^/usr/local/bin/komari-agent$'; do
+  if pgrep -f "$pattern" >/dev/null; then
+    log "deploy: killing stray agent ($pattern)"
+    pkill -9 -f "$pattern"
+    sleep 1
+  fi
+done
 
 # 2. 换 bin(留 .old 回滚)
 [ -f "$BIN" ] && mv "$BIN" "$BIN.old"
 mv "$NEW" "$BIN"
 chmod +x "$BIN"
+ln -sf "$BIN" "$LEGACY_BIN" 2>/dev/null || true
 
 # 3. 重启 watchdog(setsid 脱离 SSH,断开不杀);有界轮询 pidfile(慢宿主机不误报)
 setsid nohup "$LOOP" "$DIR" >/dev/null 2>&1 &

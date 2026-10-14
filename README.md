@@ -81,7 +81,7 @@ make all
 
 # Or build individually:
 make hub      # Output: ./bin/mangohub
-make agent    # Output: ./bin/mango-agent
+make agent    # Output: ./bin/mangohub-agent
 ```
 
 ### 2. Run Mangohub Server
@@ -96,10 +96,10 @@ MANGOHUB_LISTEN="0.0.0.0:25774" ./bin/mangohub server
 
 Access the dashboard at `http://localhost:25774`.
 
-### 3. Deploy Mango Agent
+### 3. Deploy Mangohub Agent
 
 ```bash
-./bin/mango-agent --endpoint "http://your-hub-ip:25774" --token "your-agent-token"
+./bin/mangohub-agent --endpoint "http://your-hub-ip:25774" --token "your-agent-token"
 ```
 
 ---

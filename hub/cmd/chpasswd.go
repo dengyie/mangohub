@@ -19,15 +19,21 @@ var ChpasswdCmd = &cobra.Command{
 	Use:     "chpasswd",
 	Short:   "Force change password",
 	Long:    `Force change password`,
-	Example: `komari chpasswd -p <password>`,
+	Example: `mangohub chpasswd -p <password>`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if NewPassword == "" {
 			cmd.Help()
 			return
 		}
-		if _, err := os.Stat(flags.DatabaseFile); os.IsNotExist(err) {
-			cmd.Println("Database file does not exist.")
-			return
+		dbFile := flags.DatabaseFile
+		if _, err := os.Stat(dbFile); os.IsNotExist(err) {
+			if _, errLegacy := os.Stat("./data/komari.db"); errLegacy == nil {
+				dbFile = "./data/komari.db"
+				flags.DatabaseFile = dbFile
+			} else {
+				cmd.Println("Database file does not exist.")
+				return
+			}
 		}
 		user := &models.User{}
 		dbcore.GetDBInstance().Model(&models.User{}).First(user)

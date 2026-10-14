@@ -9,11 +9,11 @@ build: all
 
 agent:
 	@mkdir -p $(BIN_DIR)
-	@echo "Building mango-agent ($(VERSION))..."
+	@echo "Building mangohub-agent ($(VERSION))..."
 	cd agent && CGO_ENABLED=0 go build -trimpath \
 		-ldflags="-s -w -X github.com/dengyie/mangohub/agent/update.CurrentVersion=$(VERSION)" \
-		-o ../$(BIN_DIR)/mango-agent .
-	@echo "Built: $(BIN_DIR)/mango-agent"
+		-o ../$(BIN_DIR)/mangohub-agent .
+	@echo "Built: $(BIN_DIR)/mangohub-agent"
 
 hub:
 	@mkdir -p $(BIN_DIR)

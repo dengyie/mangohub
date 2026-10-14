@@ -1,4 +1,4 @@
-# Windows PowerShell installation script for Mango Agent
+# Windows PowerShell installation script for Mangohub Agent
 
 # Logging functions with colors
 function Log-Info { param([string]$Message) Write-Host "$Message"    -ForegroundColor Cyan }
@@ -9,10 +9,10 @@ function Log-Step { param([string]$Message) Write-Host "$Message"    -Foreground
 function Log-Config { param([string]$Message) Write-Host "- $Message"    -ForegroundColor White }
 
 # Default parameters
-$InstallDir = Join-Path $Env:ProgramFiles "Komari"
-$ServiceName = "komari-agent"
+$InstallDir = Join-Path $Env:ProgramFiles "Mangohub"
+$ServiceName = "mangohub-agent"
 $GitHubProxy = ""
-$KomariArgs = @()
+$MangohubArgs = @()
 $InstallVersion = ""
 
 # Parse script arguments
@@ -22,7 +22,7 @@ for ($i = 0; $i -lt $args.Count; $i++) {
         "--install-service-name" { $ServiceName = $args[$i + 1]; $i++; continue }
         "--install-ghproxy" { $GitHubProxy = $args[$i + 1]; $i++; continue }
         "--install-version" { $InstallVersion = $args[$i + 1]; $i++; continue }
-        Default { $KomariArgs += $args[$i] }
+        Default { $MangohubArgs += $args[$i] }
     }
 }
 
@@ -168,34 +168,29 @@ if ($InstallVersion -ne "") {
 }
 
 # Paths
-$BinaryName = "mango-agent-windows-$arch.exe"
-$AgentPath = Join-Path $InstallDir "komari-agent.exe"
+$BinaryName = "mangohub-agent-windows-$arch.exe"
+$AgentPath = Join-Path $InstallDir "mangohub-agent.exe"
+$LegacyAgentPath = Join-Path $InstallDir "komari-agent.exe"
 
 # Uninstall previous service and binary
 function Uninstall-Previous {
     Log-Step "Checking for existing service..."
-    # Check if service exists using nssm status, as Get-Service might not work for nssm services if not properly registered
-    $serviceStatus = nssm status $ServiceName 2>&1
-    if ($serviceStatus -notmatch "SERVICE_STOPPED" -and $serviceStatus -notmatch "does not exist") {
-        Log-Info "Stopping service $ServiceName..."
-        nssm stop $ServiceName 2>&1 | Out-Null
-    }
-    # Attempt to remove the service using nssm
-    # We check if it exists first by trying to get its status.
-    # nssm remove will succeed if the service exists, and fail otherwise.
-    # We add confirm to avoid interactive prompts.
-    $removeOutput = nssm remove $ServiceName confirm 2>&1
-    if ($LASTEXITCODE -eq 0) {
-    }
-    elseif ($removeOutput -match "Can't open service! (The specified service does not exist as an installed service.)" -or $removeOutput -match "No such service" -or $removeOutput -match "does not exist") {
-        Log-Info "Service $ServiceName does not exist or was already removed."
-    }
-    else {
-        # If nssm remove fails for other reasons, try sc.exe delete as a fallback for older installations
-        $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
-        if ($svc) {
-            Stop-Service $ServiceName -Force -ErrorAction SilentlyContinue
-            sc.exe delete $ServiceName | Out-Null
+    foreach ($svcName in @($ServiceName, "komari-agent", "mango-agent")) {
+        $serviceStatus = nssm status $svcName 2>&1
+        if ($serviceStatus -notmatch "SERVICE_STOPPED" -and $serviceStatus -notmatch "does not exist") {
+            Log-Info "Stopping service $svcName..."
+            nssm stop $svcName 2>&1 | Out-Null
+        }
+        $removeOutput = nssm remove $svcName confirm 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Log-Info "Service $svcName removed."
+        }
+        else {
+            $svc = Get-Service -Name $svcName -ErrorAction SilentlyContinue
+            if ($svc) {
+                Stop-Service $svcName -Force -ErrorAction SilentlyContinue
+                sc.exe delete $svcName | Out-Null
+            }
         }
     }
 
@@ -203,13 +198,17 @@ function Uninstall-Previous {
         Log-Warning "Removing old binary..."
         Remove-Item $AgentPath -Force
     }
+    if (Test-Path $LegacyAgentPath) {
+        Log-Warning "Removing legacy binary..."
+        Remove-Item $LegacyAgentPath -Force
+    }
 }
 Uninstall-Previous
 
 function Get-LatestSnapshotVersion {
     param([Parameter(Mandatory = $true)][string]$AssetName)
 
-    $ApiUrl = "https://api.github.com/repos/komari-monitor/komari-agent/releases?per_page=100"
+    $ApiUrl = "https://api.github.com/repos/dengyie/mangohub/releases?per_page=100"
     $ApiUrls = @($ApiUrl)
     if ($GitHubProxy -ne "") {
         $ApiUrls = @("$GitHubProxy/$ApiUrl", $ApiUrl)
@@ -287,32 +286,43 @@ else {
         exit 1
     }
 }
-Log-Success "Installing Mango Agent version: $versionToInstall"
+Log-Success "Installing Mangohub Agent version: $versionToInstall"
 
-# Construct download URL
-$BinaryName = "mango-agent-windows-$arch.exe"
-$DownloadUrl = if ($GitHubProxy) { "$GitHubProxy/https://github.com/dengyie/mangohub/releases/download/$versionToInstall/$BinaryName" } else { "https://github.com/dengyie/mangohub/releases/download/$versionToInstall/$BinaryName" }
+# Construct download URL candidates
+$CandidateNames = @("mangohub-agent-windows-$arch.exe", "mango-agent-windows-$arch.exe", "komari-agent-windows-$arch.exe")
+$downloaded = $false
 
-# Download and install
 New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
-Log-Info "URL: $DownloadUrl"
-try {
-    Invoke-WebRequest -Uri $DownloadUrl -OutFile $AgentPath -UseBasicParsing
+
+foreach ($candidate in $CandidateNames) {
+    $DownloadUrl = if ($GitHubProxy) { "$GitHubProxy/https://github.com/dengyie/mangohub/releases/download/$versionToInstall/$candidate" } else { "https://github.com/dengyie/mangohub/releases/download/$versionToInstall/$candidate" }
+    Log-Info "Trying download URL: $DownloadUrl"
+    try {
+        Invoke-WebRequest -Uri $DownloadUrl -OutFile $AgentPath -UseBasicParsing
+        if ((Test-Path $AgentPath) -and (Get-Item $AgentPath).Length -gt 0) {
+            $downloaded = $true
+            break
+        }
+    }
+    catch {
+        # continue to next candidate
+    }
 }
-catch {
-    Log-Error "Download failed: $_"
+
+if (-not $downloaded) {
+    Log-Error "Download failed for all binary candidate names."
     exit 1
 }
 Log-Success "Downloaded and saved to $AgentPath"
 
 # Register and start service
 Log-Step "Configuring Windows service with nssm..."
-$argString = $KomariArgs -join ' '
+$argString = $MangohubArgs -join ' '
 # Ensure InstallDir and AgentPath are quoted if they contain spaces
 $quotedAgentPath = "`"$AgentPath`""
 nssm install $ServiceName $quotedAgentPath $argString
 # Set display name and startup type using nssm
-nssm set $ServiceName DisplayName "Mango Agent Service"
+nssm set $ServiceName DisplayName "Mangohub Agent Service"
 nssm set $ServiceName Start SERVICE_AUTO_START
 nssm set $ServiceName AppExit Default Restart
 nssm set $ServiceName AppRestartDelay 5000
@@ -320,6 +330,6 @@ nssm set $ServiceName AppRestartDelay 5000
 nssm start $ServiceName
 Log-Success "Service $ServiceName installed and started using nssm."
 
-Log-Success "Mango Agent installation completed!"
+Log-Success "Mangohub Agent installation completed!"
 Log-Config "Service name: $ServiceName"
 Log-Config "Arguments: $argString"

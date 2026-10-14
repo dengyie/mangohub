@@ -84,8 +84,20 @@ func walkDirToZip(zipWriter *zip.Writer, contentDir string) error {
 // writeBackupMarkup 追加备份标记文件到 zip。
 func writeBackupMarkup(zipWriter *zip.Writer) error {
 	now := time.Now().UTC()
-	markupContent := "此文件为 Komari 备份标记文件，请勿删除。\nThis is a Komari backup markup file, please do not delete.\n\n备份时间 / Backup Time: " + now.Format(time.RFC3339Nano)
+	markupContent := "此文件为 Mangohub 备份标记文件，请勿删除。\nThis is a Mangohub backup markup file, please do not delete.\n\n备份时间 / Backup Time: " + now.Format(time.RFC3339Nano)
 	markupWriter, err := zipWriter.CreateHeader(&zip.FileHeader{
+		Name:     "mangohub-backup-markup",
+		Method:   zip.Deflate,
+		Modified: now,
+	})
+	if err != nil {
+		return err
+	}
+	if _, err = markupWriter.Write([]byte(markupContent)); err != nil {
+		return err
+	}
+	// 兼容旧版恢复检查
+	legacyWriter, err := zipWriter.CreateHeader(&zip.FileHeader{
 		Name:     "komari-backup-markup",
 		Method:   zip.Deflate,
 		Modified: now,
@@ -93,7 +105,7 @@ func writeBackupMarkup(zipWriter *zip.Writer) error {
 	if err != nil {
 		return err
 	}
-	_, err = markupWriter.Write([]byte(markupContent))
+	_, err = legacyWriter.Write([]byte(markupContent))
 	return err
 }
 
@@ -131,7 +143,7 @@ func DownloadBackup(c *gin.Context) {
 	backupDir := filepath.Join(".", "data", "backup")
 
 	// 1) 创建临时目录，内容隔离到 content/ 子目录
-	tempDir, err := os.MkdirTemp("", "komari-backup-*")
+	tempDir, err := os.MkdirTemp("", "mangohub-backup-*")
 	if err != nil {
 		api.RespondError(c, http.StatusInternalServerError, fmt.Sprintf("Error creating temporary directory: %v", err))
 		return
@@ -150,8 +162,9 @@ func DownloadBackup(c *gin.Context) {
 		return
 	}
 
-	// 3) 处理数据库备份 -> content/komari.db
-	destDB := filepath.Join(contentDir, "komari.db")
+	// 3) 处理数据库备份 -> content/mangohub.db 与兼容用的 content/komari.db
+	destDB := filepath.Join(contentDir, "mangohub.db")
+	destDBLegacy := filepath.Join(contentDir, "komari.db")
 	dbFilePath := flags.DatabaseFile
 
 	if flags.IsSQLite() {
@@ -159,12 +172,14 @@ func DownloadBackup(c *gin.Context) {
 			api.RespondError(c, http.StatusInternalServerError, fmt.Sprintf("Error backing up sqlite database: %v", err))
 			return
 		}
+		_ = copyFile(destDB, destDBLegacy)
 	} else if dbFilePath != "" {
 		if _, err := os.Stat(dbFilePath); err == nil {
 			if err := copyFile(dbFilePath, destDB); err != nil {
 				api.RespondError(c, http.StatusInternalServerError, fmt.Sprintf("Error copying database file: %v", err))
 				return
 			}
+			_ = copyFile(destDB, destDBLegacy)
 		} else if !os.IsNotExist(err) {
 			api.RespondError(c, http.StatusInternalServerError, fmt.Sprintf("Error stating database file: %v", err))
 			return

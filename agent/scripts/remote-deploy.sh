@@ -1,5 +1,5 @@
 #!/bin/bash
-# 经 cloudflared tunnel 部署 komari-agent 二进制到指定节点(tebi/pxed)
+# 经 cloudflared tunnel 部署 mangohub-agent 二进制到指定节点(tebi/pxed)
 # 用法: remote-deploy.sh <node> <new-bin-path>
 #   <node>         tebi | pxed
 #   <new-bin-path> 新 linux/amd64 二进制在本机路径

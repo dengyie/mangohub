@@ -227,9 +227,15 @@ func uploadRemoteChunk(c *gin.Context, clientUUID string) {
 func uploadRemoteChunkStream(c *gin.Context, clientUUID string) {
 	uploadID := strings.TrimSpace(c.Query("upload_id"))
 	if uploadID == "" {
+		uploadID = strings.TrimSpace(c.GetHeader("X-Mangohub-Upload-ID"))
+	}
+	if uploadID == "" {
 		uploadID = strings.TrimSpace(c.GetHeader("X-Komari-Upload-ID"))
 	}
 	indexValue := strings.TrimSpace(c.Query("chunk_index"))
+	if indexValue == "" {
+		indexValue = strings.TrimSpace(c.GetHeader("X-Mangohub-Chunk-Index"))
+	}
 	if indexValue == "" {
 		indexValue = strings.TrimSpace(c.GetHeader("X-Komari-Chunk-Index"))
 	}
@@ -724,10 +730,10 @@ func PreviewDownload(c *gin.Context) {
 	// Keep the public URL and response filename ASCII-only. This avoids a
 	// compatibility issue in Office Online's fetcher while the token still
 	// binds the request to the original (possibly non-ASCII) path.
-	filename := strings.TrimSpace(c.Query("filename"))
-	if filename == "" {
-		filename = "komari-preview"
-	}
+		filename := strings.TrimSpace(c.Query("filename"))
+		if filename == "" {
+			filename = "mangohub-preview"
+		}
 	downloadFile(c, clientUUID, item.Path, downloadResponseOptions{
 		Filename:         filename,
 		OfficeCompatible: true,

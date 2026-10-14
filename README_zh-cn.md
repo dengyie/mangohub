@@ -81,7 +81,7 @@ make all
 
 # 或按需单独编译：
 make hub      # 输出路径: ./bin/mangohub
-make agent    # 输出路径: ./bin/mango-agent
+make agent    # 输出路径: ./bin/mangohub-agent
 ```
 
 ### 2. 运行 Mangohub 主控服务端
@@ -96,10 +96,10 @@ MANGOHUB_LISTEN="0.0.0.0:25774" ./bin/mangohub server
 
 启动完成后即可在浏览器访问 `http://localhost:25774` 进入控制面板。
 
-### 3. 部署 Mango Agent 探针
+### 3. 部署 Mangohub Agent 探针
 
 ```bash
-./bin/mango-agent --endpoint "http://your-hub-ip:25774" --token "your-agent-token"
+./bin/mangohub-agent --endpoint "http://your-hub-ip:25774" --token "your-agent-token"
 ```
 
 ---

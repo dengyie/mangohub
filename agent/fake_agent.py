@@ -183,8 +183,8 @@ def register_client(server: str, adkey: str, name: str, timeout: float) -> dict[
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate fake Komari v2 agent reports and handle only ping events.")
-    parser.add_argument("--server", required=True, help="Komari server URL, e.g. https://komari.example.com")
+    parser = argparse.ArgumentParser(description="Generate fake Mangohub agent reports and handle only ping events.")
+    parser.add_argument("--server", required=True, help="Mangohub server URL, e.g. https://mangohub.example.com")
     parser.add_argument("--adkey", required=True, help="AutoDiscovery key; used only with -new")
     parser.add_argument("-new", action="store_true", dest="new_client", help="register and save a new fake client")
     parser.add_argument("--name", default=f"fake-{socket.gethostname()}", help="name suffix for a newly registered client")

@@ -95,6 +95,14 @@ func detectBuildTrack(version string) buildTrack {
 }
 
 func expectedAssetName(goos, goarch string) string {
+	name := fmt.Sprintf("mangohub-agent-%s-%s", goos, goarch)
+	if goos == "windows" {
+		name += ".exe"
+	}
+	return name
+}
+
+func legacyAssetName(goos, goarch string) string {
 	name := fmt.Sprintf("komari-agent-%s-%s", goos, goarch)
 	if goos == "windows" {
 		name += ".exe"
@@ -106,6 +114,15 @@ func findReleaseAsset(release githubRelease, assetName string) (githubReleaseAss
 	for _, asset := range release.Assets {
 		if asset.Name == assetName {
 			return asset, true
+		}
+	}
+	// 回退检查旧版命名的二进制产物
+	legacyName := strings.Replace(assetName, "mangohub-agent-", "komari-agent-", 1)
+	if legacyName != assetName {
+		for _, asset := range release.Assets {
+			if asset.Name == legacyName {
+				return asset, true
+			}
 		}
 	}
 	return githubReleaseAsset{}, false
@@ -178,8 +195,8 @@ func listGitHubReleases(owner, repo string) ([]githubRelease, error) {
 			return nil, fmt.Errorf("failed to create GitHub releases request: %w", err)
 		}
 
-		req.Header.Set("Accept", "application/vnd.github+json")
-		req.Header.Set("User-Agent", "komari-agent")
+			req.Header.Set("Accept", "application/vnd.github+json")
+			req.Header.Set("User-Agent", "mangohub-agent")
 		if token := os.Getenv("GITHUB_TOKEN"); token != "" {
 			req.Header.Set("Authorization", "Bearer "+token)
 		}

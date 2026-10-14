@@ -39,8 +39,8 @@ log_config() {
 EUID=${EUID:-$(id -u)}
 
 # Default values
-service_name="komari-agent"
-target_dir="/opt/komari"
+service_name="mangohub-agent"
+target_dir="/opt/mangohub"
 github_proxy=""
 install_version="" # New parameter for specifying version
 install_dir_specified=false
@@ -53,10 +53,10 @@ os_type=$(uname -s)
 case $os_type in
     Darwin)
         os_name="darwin"
-        target_dir="/usr/local/komari"  # Use /usr/local on macOS
+        target_dir="/usr/local/mangohub"  # Use /usr/local on macOS
         # Check if we can write to /usr/local, fallback to user directory
         if [ ! -w "/usr/local" ] && [ "$EUID" -ne 0 ]; then
-            target_dir="$HOME/.komari"
+            target_dir="$HOME/.mangohub"
             log_info "No write permission to /usr/local, using user directory: $target_dir"
         fi
         ;;
@@ -68,7 +68,7 @@ case $os_type in
         ;;
     MINGW*|MSYS*|CYGWIN*)
         os_name="windows"
-        target_dir="/c/komari"  # Use C:\komari on Windows
+        target_dir="/c/mangohub"  # Use C:\mangohub on Windows
         ;;
     *)
         log_error "Unsupported operating system: $os_type"
@@ -77,7 +77,7 @@ case $os_type in
 esac
 
 # Parse install-specific arguments
-komari_args=""
+agent_args=""
 # [[ ]] -> [ ] (POSIX)
 while [ $# -gt 0 ]; do
     case $1 in
@@ -107,26 +107,26 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         *)
-            # Non-install arguments go to komari_args
-            komari_args="$komari_args $1"
+            # Non-install arguments go to agent_args
+            agent_args="$agent_args $1"
             shift
             ;;
     esac
 done
 
-# Remove leading space from komari_args if present
-komari_args="${komari_args# }"
+# Remove leading space from agent_args if present
+agent_args="${agent_args# }"
 
 # A direct, unprivileged installation belongs entirely to the invoking user.
 if [ "$EUID" -ne 0 ] && [ "$install_dir_specified" = false ]; then
     case "$os_name" in
         linux|freebsd)
-            target_dir="${XDG_DATA_HOME:-$HOME/.local/share}/komari"
+            target_dir="${XDG_DATA_HOME:-$HOME/.local/share}/mangohub"
             ;;
     esac
 fi
 
-komari_agent_path="${target_dir}/agent"
+mangohub_agent_path="${target_dir}/mangohub-agent"
 
 # User services are the only service type a non-root Linux installation can manage.
 if [ "$EUID" -ne 0 ] && [ "$os_name" = "linux" ]; then
@@ -140,7 +140,7 @@ if [ "$EUID" -ne 0 ] && [ "$os_name" = "linux" ]; then
 fi
 
 echo -e "${WHITE}===========================================${NC}"
-echo -e "${WHITE}    Komari Agent Installation Script     ${NC}"
+echo -e "${WHITE}    Mangohub Agent Installation Script     ${NC}"
 echo -e "${WHITE}===========================================${NC}"
 echo ""
 log_config "Installation configuration:"
@@ -148,7 +148,7 @@ log_config "  Service name: ${GREEN}$service_name${NC}"
 log_config "  Service user: ${GREEN}$service_user${NC}"
 log_config "  Install directory: ${GREEN}$target_dir${NC}"
 log_config "  GitHub proxy: ${GREEN}${github_proxy:-(direct)}${NC}"
-log_config "  Binary arguments: ${GREEN}$komari_args${NC}"
+log_config "  Binary arguments: ${GREEN}$agent_args${NC}"
 if [ -n "$install_version" ]; then
     log_config "  Specified agent version: ${GREEN}$install_version${NC}"
 else
@@ -160,13 +160,29 @@ echo ""
 uninstall_previous() {
     log_step "Checking for previous installation..."
     
-    # Stop and disable service if it exists
-    if [ "$user_service" = true ]; then
-        if systemctl --user list-unit-files | grep -q "${service_name}.service"; then
-            log_info "Stopping and disabling existing systemd user service..."
-            systemctl --user stop "${service_name}.service" || true
-            systemctl --user disable "${service_name}.service" || true
-            rm -f "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/${service_name}.service"
+    # Stop and disable service if it exists (including legacy names)
+    for svc in "$service_name" "komari-agent" "mango-agent"; do
+        if [ "$user_service" = true ]; then
+            if systemctl --user list-unit-files 2>/dev/null | grep -q "${svc}.service"; then
+                log_info "Stopping and disabling existing systemd user service $svc..."
+                systemctl --user stop "${svc}.service" || true
+                systemctl --user disable "${svc}.service" || true
+                rm -f "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/${svc}.service"
+            fi
+        else
+            if command -v systemctl >/dev/null 2>&1; then
+                if systemctl is-active "$svc" >/dev/null 2>&1; then
+                    log_info "Stopping existing service $svc..."
+                    systemctl stop "$svc" || true
+                fi
+                if systemctl is-enabled "$svc" >/dev/null 2>&1; then
+                    log_info "Disabling existing service $svc..."
+                    systemctl disable "$svc" || true
+                fi
+                rm -f "/etc/systemd/system/${svc}.service"
+            fi
+        fi
+    done
             systemctl --user daemon-reload
         fi
     elif command -v systemctl >/dev/null 2>&1 && systemctl list-unit-files | grep -q "${service_name}.service"; then
@@ -191,8 +207,8 @@ uninstall_previous() {
         rm -f "/etc/init/${service_name}.conf"
     elif [ "$os_name" = "darwin" ] && command -v launchctl >/dev/null 2>&1; then
         # macOS launchd service - check both system and user locations
-        system_plist="/Library/LaunchDaemons/com.komari.${service_name}.plist"
-        user_plist="$HOME/Library/LaunchAgents/com.komari.${service_name}.plist"
+        system_plist="/Library/LaunchDaemons/com.mangohub.${service_name}.plist"
+        user_plist="$HOME/Library/LaunchAgents/com.mangohub.${service_name}.plist"
         
         if [ -f "$system_plist" ]; then
             log_info "Stopping and removing existing system launchd service..."
@@ -208,9 +224,9 @@ uninstall_previous() {
     fi
     
     # Remove old binary if it exists
-    if [ -f "$komari_agent_path" ]; then
+    if [ -f "$mangohub_agent_path" ]; then
         log_info "Removing old binary..."
-        rm -f "$komari_agent_path"
+        rm -f "$mangohub_agent_path"
     fi
 }
 
@@ -319,7 +335,8 @@ case $arch in
 esac
 log_info "Detected OS: ${GREEN}$os_name${NC}, Architecture: ${GREEN}$arch${NC}"
 
-file_name="komari-agent-${os_name}-${arch}"
+file_name="mangohub-agent-${os_name}-${arch}"
+legacy_file_name="komari-agent-${os_name}-${arch}"
 
 resolve_snapshot_version() {
     snapshot_api_url="https://api.github.com/repos/dengyie/mangohub/releases?per_page=100"
@@ -332,7 +349,7 @@ resolve_snapshot_version() {
     for api_url in $snapshot_api_urls; do
         if ! releases_json=$(curl -fsSL --connect-timeout 15 \
             -H "Accept: application/vnd.github+json" \
-            -H "User-Agent: mango-agent-installer" \
+            -H "User-Agent: mangohub-agent-installer" \
             "$api_url"); then
             releases_json=""
         fi
@@ -381,12 +398,9 @@ else
     download_path="download/${version_to_install}"
 fi
 
+base_release_url="https://github.com/dengyie/mangohub/releases/${download_path}"
 if [ -n "$github_proxy" ]; then
-    # Use proxy for GitHub releases
-    download_url="${github_proxy}/https://github.com/dengyie/mangohub/releases/${download_path}/${file_name}"
-else
-    # Direct access to GitHub releases
-    download_url="https://github.com/dengyie/mangohub/releases/${download_path}/${file_name}"
+    base_release_url="${github_proxy}/${base_release_url}"
 fi
 
 log_step "Creating installation directory: ${GREEN}$target_dir${NC}"
@@ -395,28 +409,29 @@ if [ "$EUID" -eq 0 ] && [ "$service_user" != "root" ]; then
     chown "$service_user" "$target_dir"
 fi
 
-# Download with automatic mirror fallback.
-# 直连失败自动依次尝试常见 GitHub 加速镜像, 可用 --install-no-mirror 关闭.
-if [ -n "$github_proxy" ] || [ "$install_no_mirror" = "true" ]; then
-    download_urls="$download_url"
-else
-    download_urls="
+dl_ok=""
+for try_file in "$file_name" "$legacy_file_name"; do
+    download_url="${base_release_url}/${try_file}"
+    if [ -n "$github_proxy" ] || [ "$install_no_mirror" = "true" ]; then
+        download_urls="$download_url"
+    else
+        download_urls="
 ${download_url}
 https://ghfast.top/${download_url}
 https://gh-proxy.com/${download_url}
 https://ghproxy.net/${download_url}
 "
-fi
-
-dl_ok=""
-for u in $download_urls; do
-    log_step "Downloading $file_name ..."
-    log_info "URL: ${CYAN}$u${NC}"
-    if curl -fL --connect-timeout 15 -o "$komari_agent_path" "$u" && [ -s "$komari_agent_path" ]; then
-        dl_ok=1
-        break
     fi
-    rm -f "$komari_agent_path"
+
+    for u in $download_urls; do
+        log_step "Downloading $try_file ..."
+        log_info "URL: ${CYAN}$u${NC}"
+        if curl -fL --connect-timeout 15 -o "$mangohub_agent_path" "$u" && [ -s "$mangohub_agent_path" ]; then
+            dl_ok=1
+            break 2
+        fi
+        rm -f "$mangohub_agent_path"
+    done
 done
 
 if [ -z "$dl_ok" ]; then
@@ -426,11 +441,12 @@ if [ -z "$dl_ok" ]; then
 fi
 
 # Set executable permissions
-chmod +x "$komari_agent_path"
+chmod +x "$mangohub_agent_path"
+ln -sf "$mangohub_agent_path" "${target_dir}/agent"
 if [ "$EUID" -eq 0 ] && [ "$service_user" != "root" ]; then
-    chown "$service_user" "$komari_agent_path"
+    chown "$service_user" "$mangohub_agent_path" "${target_dir}/agent"
 fi
-log_success "Komari-agent installed to ${GREEN}$komari_agent_path${NC}"
+log_success "Mangohub-agent installed to ${GREEN}$mangohub_agent_path${NC}"
 
 # Detect init system and configure service
 log_step "Configuring system service..."
@@ -536,12 +552,12 @@ if [ "$init_system" = "nixos" ]; then
     log_info "Please add the following to your NixOS configuration:"
     echo ""
     echo -e "${CYAN}systemd.services.${service_name} = {${NC}"
-    echo -e "${CYAN}  description = \"Komari Agent Service\";${NC}"
+    echo -e "${CYAN}  description = \"Mangohub Agent Service\";${NC}"
     echo -e "${CYAN}  after = [ \"network.target\" ];${NC}"
     echo -e "${CYAN}  wantedBy = [ \"multi-user.target\" ];${NC}"
     echo -e "${CYAN}  serviceConfig = {${NC}"
     echo -e "${CYAN}    Type = \"simple\";${NC}"
-    echo -e "${CYAN}    ExecStart = \"${komari_agent_path} ${komari_args}\";${NC}"
+    echo -e "${CYAN}    ExecStart = \"${mangohub_agent_path} ${agent_args}\";${NC}"
     echo -e "${CYAN}    WorkingDirectory = \"${target_dir}\";${NC}"
     echo -e "${CYAN}    Restart = \"always\";${NC}"
     echo -e "${CYAN}    User = \"${service_user}\";${NC}"
@@ -557,10 +573,10 @@ elif [ "$init_system" = "openrc" ]; then
     cat > "$service_file" << EOF
 #!/sbin/openrc-run
 
-name="Komari Agent Service"
-description="Komari monitoring agent"
-command="${komari_agent_path}"
-command_args="${komari_args}"
+name="Mangohub Agent Service"
+description="Mangohub monitoring agent"
+command="${mangohub_agent_path}"
+command_args="${agent_args}"
 command_user="${service_user}"
 directory="${target_dir}"
 pidfile="/run/${service_name}.pid"
@@ -585,12 +601,12 @@ elif [ "$init_system" = "systemd-user" ]; then
     mkdir -p "$service_dir"
     cat > "$service_file" << EOF
 [Unit]
-Description=Komari Agent Service
+Description=Mangohub Agent Service
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=${komari_agent_path} ${komari_args}
+ExecStart=${mangohub_agent_path} ${agent_args}
 WorkingDirectory=${target_dir}
 Restart=always
 
@@ -606,12 +622,12 @@ elif [ "$init_system" = "systemd" ]; then
     service_file="/etc/systemd/system/${service_name}.service"
     cat > "$service_file" << EOF
 [Unit]
-Description=Komari Agent Service
+Description=Mangohub Agent Service
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=${komari_agent_path} ${komari_args}
+ExecStart=${mangohub_agent_path} ${agent_args}
 WorkingDirectory=${target_dir}
 Restart=always
 User=${service_user}
@@ -637,8 +653,8 @@ STOP=10
 
 USE_PROCD=1
 
-PROG="${komari_agent_path}"
-ARGS="${komari_args}"
+PROG="${mangohub_agent_path}"
+ARGS="${agent_args}"
 
 start_service() {
     procd_open_instance
@@ -682,7 +698,7 @@ elif [ "$init_system" = "launchd" ]; then
     if [ "$is_user_install" = true ]; then
         # User-level service (LaunchAgent)
         plist_dir="$HOME/Library/LaunchAgents"
-        plist_file="$plist_dir/com.komari.${service_name}.plist"
+        plist_file="$plist_dir/com.mangohub.${service_name}.plist"
         log_info "Installing as user-level service (LaunchAgent)"
         mkdir -p "$plist_dir"
         service_user="$(whoami)"
@@ -690,7 +706,7 @@ elif [ "$init_system" = "launchd" ]; then
     else
         # System-level service (LaunchDaemon)
         plist_dir="/Library/LaunchDaemons"
-        plist_file="$plist_dir/com.komari.${service_name}.plist"
+        plist_file="$plist_dir/com.mangohub.${service_name}.plist"
         log_info "Installing as system-level service (LaunchDaemon)"
         log_dir="/var/log"
     fi
@@ -702,15 +718,15 @@ elif [ "$init_system" = "launchd" ]; then
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.komari.${service_name}</string>
+    <string>com.mangohub.${service_name}</string>
     <key>ProgramArguments</key>
     <array>
-        <string>${komari_agent_path}</string>
+        <string>${mangohub_agent_path}</string>
 EOF
     
     # Add program arguments if provided
-    if [ -n "$komari_args" ]; then
-        echo "$komari_args" | xargs -n1 printf "        <string>%s</string>\n" >> "$plist_file"
+    if [ -n "$agent_args" ]; then
+        echo "$agent_args" | xargs -n1 printf "        <string>%s</string>\n" >> "$plist_file"
     fi
     
     cat >> "$plist_file" << EOF
@@ -754,8 +770,8 @@ elif [ "$init_system" = "upstart" ]; then
     log_info "Using upstart for service management"
     service_file="/etc/init/${service_name}.conf"
     cat > "$service_file" << EOF
-# KOMARI Agent
-description "Komari Agent Service"
+# Mangohub Agent
+description "Mangohub Agent Service"
 
 chdir ${target_dir}
 start on filesystem or runlevel [2345]
@@ -770,12 +786,12 @@ console none
 setuid ${service_user}
 
 pre-start script
-    test -x ${komari_agent_path} || { stop; exit 0; }
+    test -x ${mangohub_agent_path} || { stop; exit 0; }
 end script
 
 # Start
 script
-    exec ${komari_agent_path} ${komari_args}
+    exec ${mangohub_agent_path} ${agent_args}
 end script
 EOF
     # enable Upstart unit
@@ -791,14 +807,14 @@ fi
 echo ""
 echo -e "${WHITE}===========================================${NC}"
 if [ -f /etc/NIXOS ]; then
-    log_success "Komari-agent binary installed!"
+    log_success "Mangohub-agent binary installed!"
     log_warning "NixOS requires declarative service configuration."
     log_info "Please add the service configuration to your NixOS config and rebuild."
 else
-    log_success "Komari-agent installation completed!"
+    log_success "Mangohub-agent installation completed!"
 fi
 log_config "Service: ${GREEN}$service_name${NC}"
-log_config "Arguments: ${GREEN}$komari_args${NC}"
+log_config "Arguments: ${GREEN}$agent_args${NC}"
 echo -e "${WHITE}===========================================${NC}"
 
 

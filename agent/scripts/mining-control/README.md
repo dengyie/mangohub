@@ -1,8 +1,8 @@
 # 中心端挖矿管控 · 节点侧脚本
 
-hub（mango-hub）通过 `agent.mining.control` 下发 `start|stop`，agent 将 action 替换进
+Mangohub（hub）通过 `agent.mining.control` 下发 `start|stop`，agent 将 action 替换进
 `AGENT_MINER_CONTROL_CMD` 模板（含 `{action}` 占位符）执行本目录脚本。部署位置与
-各节点实况见 Obsidian《mango-agent 挖矿上报与多机部署优化》§8.2/§8.3.1。
+各节点实况见 Obsidian 监控运维知识库。
 
 ## 部署位置
 

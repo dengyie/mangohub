@@ -123,7 +123,7 @@ func ValidateArchive(path string) error {
 	var expandedSize uint64
 	hasMarkup := false
 	for _, entry := range reader.File {
-		if entry.Name == "komari-backup-markup" {
+		if entry.Name == "mangohub-backup-markup" || entry.Name == "komari-backup-markup" {
 			hasMarkup = true
 		}
 		if entry.UncompressedSize64 > uint64(MaxArchiveSize) || expandedSize > uint64(MaxArchiveSize)-entry.UncompressedSize64 {
@@ -132,7 +132,7 @@ func ValidateArchive(path string) error {
 		expandedSize += entry.UncompressedSize64
 	}
 	if !hasMarkup {
-		return fmt.Errorf("invalid backup file: missing komari-backup-markup file")
+		return fmt.Errorf("invalid backup file: missing backup markup file")
 	}
 	return nil
 }

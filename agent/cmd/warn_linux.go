@@ -14,13 +14,17 @@ import (
 )
 
 const (
-	linuxMOTDPath          = "/etc/motd"
-	legacyUpdateMOTDPath   = "/etc/update-motd.d/99-komari-agent-warning"
-	legacyUpdateMOTDMarker = "# Komari Agent managed MOTD warning"
-	motdWarningStart       = "[Komari] Remote control is enabled on this device"
+	linuxMOTDPath            = "/etc/motd"
+	mangohubUpdateMOTDPath   = "/etc/update-motd.d/99-mangohub-agent-warning"
+	legacyUpdateMOTDPath     = "/etc/update-motd.d/99-komari-agent-warning"
+	mangohubUpdateMOTDMarker = "# Mangohub Agent managed MOTD warning"
+	legacyUpdateMOTDMarker   = "# Komari Agent managed MOTD warning"
+	motdWarningStart         = "[Mangohub] Remote control is enabled on this device"
+	legacyMotdWarningStart   = "[Komari] Remote control is enabled on this device"
 )
 
-var motdWarningEnd = "Uninstall Komari Agent: " + warningUninstallURL + "\n"
+var motdWarningEnd = "Uninstall Mangohub Agent: " + warningUninstallURL + "\n"
+var legacyMotdWarningEnd = "Uninstall Komari Agent: "
 
 type motdFile struct {
 	target   string
@@ -35,6 +39,7 @@ func startSecurityWarning(ctx context.Context) func() {
 	if ctx.Err() != nil {
 		return func() {}
 	}
+	removeLegacyUpdateMOTDWarning(mangohubUpdateMOTDPath)
 	removeLegacyUpdateMOTDWarning(legacyUpdateMOTDPath)
 	if flags.DisableWebSsh {
 		if err := removeInstalledMOTDWarning(linuxMOTDPath); err != nil {
@@ -47,6 +52,12 @@ func startSecurityWarning(ctx context.Context) func() {
 		newSecurityWarning(flags.Endpoint, warningCurrentUser()),
 	)
 	if err != nil {
+		log.Printf("[warn] could not maintain MOTD warning: %v", err)
+		return func() {}
+	}
+	log.Printf("[warn] remote control is enabled; MOTD warning appended")
+	return cleanup
+}
 		log.Printf("[warn] could not maintain MOTD warning: %v", err)
 		return func() {}
 	}
@@ -81,8 +92,9 @@ func removeLegacyUpdateMOTDWarning(path string) {
 		log.Printf("[warn] could not inspect legacy update-motd hook: %v", err)
 		return
 	}
-	if !strings.HasPrefix(string(data), legacyUpdateMOTDMarker+"\n") {
-		log.Printf("[warn] legacy update-motd path is not managed by Komari; leaving it in place")
+	text := string(data)
+	if !strings.HasPrefix(text, mangohubUpdateMOTDMarker+"\n") && !strings.HasPrefix(text, legacyUpdateMOTDMarker+"\n") {
+		log.Printf("[warn] legacy update-motd path is not managed by Mangohub; leaving it in place")
 		return
 	}
 	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
@@ -167,23 +179,40 @@ func installMOTDWarning(path string, warning securityWarning) (func(), error) {
 func renderMOTDWarning(warning securityWarning) string {
 	return fmt.Sprintf("%s\n"+
 		"\x1b[33m%s\x1b[0m can \x1b[31mexecute commands\x1b[0m and read or \x1b[31mmodify files\x1b[0m on this device as \x1b[33m%s\x1b[0m.\n"+
-		"%s\n%s\n\nUninstall Komari Agent: %s\n",
+		"%s\n%s\n\nUninstall Mangohub Agent: %s\n",
 		motdWarningStart, warning.PanelHost, warning.RunAsUser, warningAdvice, warningCompromise, warningUninstallURL)
 }
 
 func removeMOTDWarning(content string) (string, bool, error) {
+	// 优先检查并移除 Mangohub 警告，次级兼顾旧版 Komari 警告
 	start := strings.Index(content, motdWarningStart)
+	endMarker := motdWarningEnd
 	if start < 0 {
-		return content, false, nil
+		start = strings.Index(content, legacyMotdWarningStart)
+		if start < 0 {
+			return content, false, nil
+		}
+		// 寻找旧版结束标记行
+		idx := strings.Index(content[start:], legacyMotdWarningEnd)
+		if idx >= 0 {
+			newlineIdx := strings.Index(content[start+idx:], "\n")
+			if newlineIdx >= 0 {
+				endMarker = content[start+idx : start+idx+newlineIdx+1]
+			}
+		}
 	}
-	if strings.Contains(content[start+len(motdWarningStart):], motdWarningStart) {
-		return "", false, fmt.Errorf("refusing to modify MOTD with multiple Komari warnings")
+	marker := motdWarningStart
+	if strings.HasPrefix(content[start:], legacyMotdWarningStart) {
+		marker = legacyMotdWarningStart
 	}
-	relativeEnd := strings.Index(content[start:], motdWarningEnd)
+	if strings.Contains(content[start+len(marker):], marker) {
+		return "", false, fmt.Errorf("refusing to modify MOTD with multiple warnings")
+	}
+	relativeEnd := strings.Index(content[start:], endMarker)
 	if relativeEnd < 0 {
-		return "", false, fmt.Errorf("refusing to modify incomplete Komari warning in MOTD")
+		return "", false, fmt.Errorf("refusing to modify incomplete warning in MOTD")
 	}
-	end := start + relativeEnd + len(motdWarningEnd)
+	end := start + relativeEnd + len(endMarker)
 	before := content[:start]
 	after := strings.TrimPrefix(content[end:], "\n")
 	return before + after, true, nil
@@ -226,7 +255,7 @@ func readMOTD(path string) (motdFile, error) {
 }
 
 func writeMOTD(file motdFile, data []byte) error {
-	temp, err := os.CreateTemp(filepath.Dir(file.target), ".komari-motd-*")
+	temp, err := os.CreateTemp(filepath.Dir(file.target), ".mangohub-motd-*")
 	if err != nil {
 		return err
 	}

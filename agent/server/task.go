@@ -100,8 +100,8 @@ func buildTaskCommandWithContext(ctx context.Context, command string) (*exec.Cmd
 		ctx = context.Background()
 	}
 	var cmd *exec.Cmd
-	if runtime.GOOS == "windows" {
-		scriptFile, err := os.CreateTemp("", "komari-task-*.ps1")
+		if runtime.GOOS == "windows" {
+			scriptFile, err := os.CreateTemp("", "mangohub-task-*.ps1")
 		if err != nil {
 			return nil, func() {}, err
 		}
