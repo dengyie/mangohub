@@ -66,6 +66,14 @@ func zipDirectoryExcluding(srcDir, dstZip string, exclude map[string]struct{}) e
 			_, err := zw.Create(zipName + "/")
 			return err
 		}
+		// 若为符号链接，检查指向的目标是否为目录
+		if info.Mode()&os.ModeSymlink != 0 {
+			statInfo, statErr := os.Stat(path)
+			if statErr == nil && statInfo.IsDir() {
+				return nil
+			}
+		}
+
 		// 普通文件
 		fh, err := os.Open(path)
 		if err != nil {
@@ -261,11 +269,19 @@ func backupOnVersionUpgrade() {
 	}
 	tsName := time.Now().UTC().Format("20060102-150405.000")
 	bakPath := filepath.Join(backupDir, fmt.Sprintf("upgrade-%s.zip", tsName))
-	// 打包 ./data（排除 backup 归档目录本身与 theme-backup：主题历史备份独立存在、
-	// 不受升级/迁移影响，重复打包只会让每个 zip 膨胀 ~260MB）。
-	backupZipPath := filepath.Join(".", "data", "backup.zip")
-	themeBackupDir := filepath.Join(".", "data", "theme-backup")
-	if zipErr := zipDirectoryExcluding("./data", bakPath, map[string]struct{}{backupZipPath: {}, backupDir: {}, themeBackupDir: {}}); zipErr != nil {
+		// 打包 ./data（排除 backup 归档目录本身、主题目录 theme/theme-releases 与 theme-backup：
+		// 主题历史与热更产物独立存在不受升级影响，重复打包会导致每个 zip 膨胀数百兆并触发链接读取错误）。
+		backupZipPath := filepath.Join(".", "data", "backup.zip")
+		themeBackupDir := filepath.Join(".", "data", "theme-backup")
+		themeDir := filepath.Join(".", "data", "theme")
+		themeReleasesDir := filepath.Join(".", "data", "theme-releases")
+		if zipErr := zipDirectoryExcluding("./data", bakPath, map[string]struct{}{
+			backupZipPath:    {},
+			backupDir:        {},
+			themeBackupDir:   {},
+			themeDir:         {},
+			themeReleasesDir: {},
+		}); zipErr != nil {
 		logger.Errorf("dbcore", "[upgrade-backup] failed to backup ./data before upgrade (from %q to %q): %v", prevVersion, versionID, zipErr)
 		return
 	}
@@ -446,12 +462,16 @@ func doInitialize() error {
 		}
 	}()
 
-	// 记录“打开数据库之前”komari.db 是否已存在，用于区分全新安装与旧版升级。
-	// 必须在（可能的）恢复逻辑之后、gorm.Open 之前采集：恢复会解压出旧库，
-	// gorm.Open 会创建空库。
-	if _, statErr := os.Stat(resolveDatabaseFile()); statErr == nil {
-		dbFileExistedAtStartup = true
-	}
+		// 统一解析并回填实际使用的 SQLite 数据库文件路径（自动发现并平滑接管存量 ./data/komari.db）
+		actualDBFile := resolveDatabaseFile()
+		flags.DatabaseFile = actualDBFile
+
+		// 记录“打开数据库之前”数据库是否已存在，用于区分全新安装与旧版升级。
+		// 必须在（可能的）恢复逻辑之后、gorm.Open 之前采集：恢复会解压出旧库，
+		// gorm.Open 会创建空库。
+		if _, statErr := os.Stat(actualDBFile); statErr == nil {
+			dbFileExistedAtStartup = true
+		}
 
 	logConfig := &gorm.Config{
 		Logger:  logger.NewGormLogger(),
