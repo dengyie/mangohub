@@ -529,13 +529,42 @@ func uploadChunkCount(size, chunkSize int64) int64 {
 	return (size + chunkSize - 1) / chunkSize
 }
 
+func validateUploadID(uploadID string) error {
+	uploadID = strings.TrimSpace(uploadID)
+	if uploadID == "" {
+		return errors.New("upload_id is required")
+	}
+	if len(uploadID) > 128 {
+		return errors.New("upload_id is too long")
+	}
+	if strings.Contains(uploadID, "..") || strings.ContainsAny(uploadID, "/\\\x00") {
+		return errors.New("invalid upload_id: path traversal detected")
+	}
+	for _, r := range uploadID {
+		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_' || r == '.') {
+			return errors.New("invalid upload_id: characters must be alphanumeric, dash, underscore, or dot")
+		}
+	}
+	if uploadID == "." || uploadID == ".." {
+		return errors.New("invalid upload_id: illegal name")
+	}
+	return nil
+}
+
 func uploadPartPathFor(targetPath, uploadID string) string {
 	target := filepath.ToSlash(targetPath)
 	name := filepath.Base(target)
 	if name == "" || name == "." || name == "/" {
 		name = "upload"
 	}
-	return filepath.Join(filepath.Dir(target), "."+name+".komari-upload-"+uploadID+".part")
+	cleanUploadID := filepath.Base(uploadID)
+	cleanUploadID = strings.ReplaceAll(cleanUploadID, "/", "")
+	cleanUploadID = strings.ReplaceAll(cleanUploadID, "\\", "")
+	cleanUploadID = strings.ReplaceAll(cleanUploadID, "..", "")
+	if cleanUploadID == "" || cleanUploadID == "." {
+		cleanUploadID = "unknown"
+	}
+	return filepath.Join(filepath.Dir(target), "."+name+".mangohub-upload-"+cleanUploadID+".part")
 }
 
 func syncUploadDirectory(dir string) error {
@@ -566,8 +595,8 @@ func removeUploadFileLocked(uploadID string) error {
 
 func cancelFileUpload(args map[string]interface{}) (json.RawMessage, error) {
 	uploadID := strings.TrimSpace(argString(args, "upload_id"))
-	if uploadID == "" {
-		return nil, errors.New("upload_id is required")
+	if err := validateUploadID(uploadID); err != nil {
+		return nil, err
 	}
 	// Stop any Agent-side HTTP body readers before removing the temporary file.
 	// This lets an explicit cancel interrupt a slow relay instead of waiting for
@@ -621,8 +650,8 @@ func commitFileUpload(args map[string]interface{}) (json.RawMessage, error) {
 	totalSize := argInt64(args, "total_size")
 	chunkSize := argInt64(args, "chunk_size")
 	chunkCount := argInt64(args, "chunk_count")
-	if uploadID == "" {
-		return nil, errors.New("upload_id is required")
+	if err := validateUploadID(uploadID); err != nil {
+		return nil, err
 	}
 	if path == string(filepath.Separator) || path == "." {
 		return nil, errors.New("upload path must be a file")

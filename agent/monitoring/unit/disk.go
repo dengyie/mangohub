@@ -129,19 +129,26 @@ var (
 )
 
 // dirApparentSizeCached 带 TTL 缓存的目录大小计算；并发安全。
+// 不在全目录扫描期间长时间持有互斥锁，避免阻塞并发指标采集。
 func dirApparentSizeCached(root string) (uint64, bool) {
 	diskWalkMu.Lock()
-	defer diskWalkMu.Unlock()
 	if diskWalkRoot == root && !diskWalkAt.IsZero() && time.Since(diskWalkAt) < diskWalkTTL {
+		defer diskWalkMu.Unlock()
 		return diskWalkUsed, diskWalkOK
 	}
+	diskWalkMu.Unlock()
+
 	used, ok := dirApparentSize(root)
+
+	diskWalkMu.Lock()
+	defer diskWalkMu.Unlock()
 	diskWalkRoot, diskWalkUsed, diskWalkOK, diskWalkAt = root, used, ok, time.Now()
 	return used, ok
 }
 
 // dirApparentSize 递归累加目录下常规文件的 apparent size（等价 du -sb）。
 // 不跟随符号链接，跳过无法读取的项，避免因单个错误中断统计。
+// 优先通过 d.Type().IsRegular() 判断文件类型，杜绝在目录/软链接/设备节点上进行多余的 stat 系统调用。
 func dirApparentSize(root string) (uint64, bool) {
 	var total uint64
 	walked := false
@@ -154,14 +161,14 @@ func dirApparentSize(root string) (uint64, bool) {
 		if d.IsDir() {
 			return nil
 		}
+		if !d.Type().IsRegular() {
+			return nil
+		}
 		info, err := d.Info()
 		if err != nil {
 			return nil
 		}
-		// 只统计常规文件（排除符号链接/设备/socket）
-		if info.Mode().IsRegular() {
-			total += uint64(info.Size())
-		}
+		total += uint64(info.Size())
 		return nil
 	})
 	if err != nil || !walked {

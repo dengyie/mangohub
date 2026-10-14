@@ -345,8 +345,8 @@ func parseUploadStreamSpec(args map[string]interface{}) (uploadStreamSpec, error
 	if spec.ChunkSize == 0 {
 		spec.ChunkSize = defaultTransferChunkSize
 	}
-	if spec.UploadID == "" {
-		return uploadStreamSpec{}, errors.New("upload_id is required")
+	if err := validateUploadID(spec.UploadID); err != nil {
+		return uploadStreamSpec{}, err
 	}
 	if spec.Path == string(filepath.Separator) || spec.Path == "." {
 		return uploadStreamSpec{}, errors.New("upload path must be a file")

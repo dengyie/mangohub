@@ -32,3 +32,17 @@ func WithinBase(baseDir, path string) bool {
 	}
 	return relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
 }
+
+// EvalCanonicalPath resolves symlinks on name. If name does not exist yet (e.g.
+// a target file being created), it resolves symlinks on the nearest existing parent directory.
+func EvalCanonicalPath(name string) string {
+	if evaled, err := filepath.EvalSymlinks(name); err == nil {
+		return filepath.Clean(evaled)
+	}
+	dir := filepath.Dir(name)
+	base := filepath.Base(name)
+	if evaledDir, err := filepath.EvalSymlinks(dir); err == nil {
+		return filepath.Clean(filepath.Join(evaledDir, base))
+	}
+	return filepath.Clean(name)
+}

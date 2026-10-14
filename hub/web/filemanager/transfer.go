@@ -129,7 +129,14 @@ type persistedUploadSession struct {
 }
 
 func uploadSessionPath(id string) string {
-	return filepath.Join("data", ".uploading", ".komari-upload-"+id+".json")
+	cleanID := filepath.Base(strings.TrimSpace(id))
+	cleanID = strings.ReplaceAll(cleanID, "/", "")
+	cleanID = strings.ReplaceAll(cleanID, "\\", "")
+	cleanID = strings.ReplaceAll(cleanID, "..", "")
+	if cleanID == "" || cleanID == "." {
+		cleanID = "invalid"
+	}
+	return filepath.Join("data", ".uploading", ".mangohub-upload-"+cleanID+".json")
 }
 
 func Upload(c *gin.Context) {

@@ -198,10 +198,17 @@ func SetVersionID(id string) {
 }
 
 // resolveDatabaseFile 返回当前使用的 SQLite 数据库文件路径。
+// 优先使用 ./data/mangohub.db；若存在旧版 ./data/komari.db 且 mangohub.db 尚未建立，则自动平滑兼容。
 func resolveDatabaseFile() string {
 	dbFile := flags.DatabaseFile
-	if dbFile == "" {
-		dbFile = "./data/komari.db"
+	if dbFile == "" || dbFile == "./data/mangohub.db" || dbFile == "./data/komari.db" {
+		if _, err := os.Stat("./data/mangohub.db"); err == nil {
+			return "./data/mangohub.db"
+		}
+		if _, err := os.Stat("./data/komari.db"); err == nil {
+			return "./data/komari.db"
+		}
+		return "./data/mangohub.db"
 	}
 	return dbFile
 }
@@ -322,7 +329,7 @@ func writeVersionMarker() {
 
 func buildSQLiteDSN(databaseFile string) string {
 	if databaseFile == "" {
-		databaseFile = "./data/komari.db"
+		databaseFile = resolveDatabaseFile()
 	}
 
 	params := fmt.Sprintf("_busy_timeout=%d&_txlock=immediate", mainSQLiteBusyTimeout.Milliseconds())

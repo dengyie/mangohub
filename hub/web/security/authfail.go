@@ -3,6 +3,7 @@ package security
 import (
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -109,33 +110,138 @@ func (st *authFailState) pruneLocked(now time.Time) {
 	}
 }
 
-// authFailClientIP resolves the true source address. All public traffic
-// arrives through the Cloudflare tunnel (RemoteAddr is a private hop), so
-// headers are only trusted in that topology — and only CF-Connecting-IP,
-// which Cloudflare sets from the actual socket and clients cannot forge. For
-// direct public connections every header is client-controlled, so the socket
-// address wins. Trusting X-Forwarded-For here would let a probe rotate
-// forged IPs and bypass the limit entirely.
+var (
+	trustedCIDRsMu sync.RWMutex
+	trustedCIDRs   []*net.IPNet
+	trustPrivate   bool
+)
+
+func init() {
+	ReloadTrustedProxies()
+}
+
+// ReloadTrustedProxies refreshes the trusted proxies configuration from environment variables.
+func ReloadTrustedProxies() {
+	trustedCIDRsMu.Lock()
+	defer trustedCIDRsMu.Unlock()
+	trustedCIDRs = nil
+	trustPrivate = false
+
+	if v := os.Getenv("MANGOHUB_TRUST_PRIVATE_PROXIES"); v == "1" || strings.EqualFold(v, "true") {
+		trustPrivate = true
+	}
+	raw := os.Getenv("MANGOHUB_TRUSTED_PROXIES")
+	if raw == "" {
+		raw = os.Getenv("TRUSTED_PROXIES")
+	}
+	if raw != "" {
+		for _, part := range strings.Split(raw, ",") {
+			part = strings.TrimSpace(part)
+			if part == "" {
+				continue
+			}
+			if !strings.Contains(part, "/") {
+				if parsed := net.ParseIP(part); parsed != nil {
+					if parsed.To4() != nil {
+						part += "/32"
+					} else {
+						part += "/128"
+					}
+				}
+			}
+			_, ipNet, err := net.ParseCIDR(part)
+			if err == nil && ipNet != nil {
+				trustedCIDRs = append(trustedCIDRs, ipNet)
+			}
+		}
+	}
+}
+
+// SetTrustedProxies configures trusted reverse proxy CIDRs or whether all RFC 1918 private IPs are trusted.
+func SetTrustedProxies(cidrs []string, allowAllPrivate bool) {
+	trustedCIDRsMu.Lock()
+	defer trustedCIDRsMu.Unlock()
+	trustPrivate = allowAllPrivate
+	trustedCIDRs = nil
+	for _, cidr := range cidrs {
+		cidr = strings.TrimSpace(cidr)
+		if cidr == "" {
+			continue
+		}
+		if !strings.Contains(cidr, "/") {
+			if parsed := net.ParseIP(cidr); parsed != nil {
+				if parsed.To4() != nil {
+					cidr += "/32"
+				} else {
+					cidr += "/128"
+				}
+			}
+		}
+		_, ipNet, err := net.ParseCIDR(cidr)
+		if err == nil && ipNet != nil {
+			trustedCIDRs = append(trustedCIDRs, ipNet)
+		}
+	}
+}
+
+// authFailClientIP resolves the true source address. By default only loopback
+// hops or explicitly configured trusted proxies are trusted to supply CF-Connecting-IP
+// or X-Real-IP. For direct connections or untrusted hops, the socket remote address wins.
+// The extracted header IP is also validated to ensure it is a legal IP address.
 func authFailClientIP(c *gin.Context) string {
 	remote := c.Request.RemoteAddr
 	if host, _, err := net.SplitHostPort(remote); err == nil {
 		remote = host
 	}
 	if isTrustedHop(remote) {
-		if v := strings.TrimSpace(c.GetHeader("CF-Connecting-IP")); v != "" {
+		if v := cleanAndValidateIP(c.GetHeader("CF-Connecting-IP")); v != "" {
 			return v
 		}
-		if v := strings.TrimSpace(c.GetHeader("X-Real-IP")); v != "" {
+		if v := cleanAndValidateIP(c.GetHeader("X-Real-IP")); v != "" {
 			return v
 		}
 	}
 	return remote
 }
 
-func isTrustedHop(ip string) bool {
-	parsed := net.ParseIP(ip)
+func cleanAndValidateIP(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	if strings.Contains(raw, ",") {
+		raw = strings.TrimSpace(strings.Split(raw, ",")[0])
+	}
+	if host, _, err := net.SplitHostPort(raw); err == nil {
+		raw = host
+	}
+	parsed := net.ParseIP(raw)
+	if parsed == nil {
+		return ""
+	}
+	return parsed.String()
+}
+
+func isTrustedHop(ipStr string) bool {
+	parsed := net.ParseIP(ipStr)
 	if parsed == nil {
 		return false
 	}
-	return parsed.IsLoopback() || parsed.IsPrivate() || parsed.IsLinkLocalUnicast()
+	if parsed.IsLoopback() {
+		return true
+	}
+
+	trustedCIDRsMu.RLock()
+	defer trustedCIDRsMu.RUnlock()
+
+	if trustPrivate && (parsed.IsPrivate() || parsed.IsLinkLocalUnicast()) {
+		return true
+	}
+
+	for _, cidr := range trustedCIDRs {
+		if cidr.Contains(parsed) {
+			return true
+		}
+	}
+	return false
 }

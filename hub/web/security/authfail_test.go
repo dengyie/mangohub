@@ -166,6 +166,54 @@ func TestAuthFailTrustedHopWithoutCFHeader(t *testing.T) {
 	}
 }
 
+func TestAuthFailClientIPUntrustedPrivateHopCannotSpoofHeader(t *testing.T) {
+	SetTrustedProxies(nil, false) // Default: private IPs are NOT trusted proxies
+	st := newAuthFailStateForTest()
+	r := newAuthFailTestRouter(st)
+	for i := 0; i < authFailLimit; i++ {
+		serve(r, "10.0.0.5:1234", "1.2.3.4")
+	}
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	if _, ok := st.hits["1.2.3.4"]; ok {
+		t.Fatal("untrusted private hop must not be allowed to spoof client IP")
+	}
+	if _, ok := st.hits["10.0.0.5"]; !ok {
+		t.Fatalf("expected remote socket IP 10.0.0.5 to be tracked, hits=%v", st.hits)
+	}
+}
+
+func TestAuthFailClientIPConfiguredTrustedProxy(t *testing.T) {
+	SetTrustedProxies([]string{"10.0.0.0/8"}, false)
+	defer SetTrustedProxies(nil, false)
+	st := newAuthFailStateForTest()
+	r := newAuthFailTestRouter(st)
+	for i := 0; i < authFailLimit; i++ {
+		serve(r, "10.0.0.5:1234", "198.51.100.25")
+	}
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	if _, ok := st.hits["198.51.100.25"]; !ok {
+		t.Fatalf("configured trusted proxy should allow CF-Connecting-IP, hits=%v", st.hits)
+	}
+}
+
+func TestAuthFailClientIPInvalidHeaderIgnored(t *testing.T) {
+	st := newAuthFailStateForTest()
+	r := newAuthFailTestRouter(st)
+	for i := 0; i < authFailLimit; i++ {
+		serve(r, "127.0.0.1:1234", "not-a-valid-ip")
+	}
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	if _, ok := st.hits["not-a-valid-ip"]; ok {
+		t.Fatal("invalid IP in header must be rejected")
+	}
+	if _, ok := st.hits["127.0.0.1"]; !ok {
+		t.Fatalf("expected loopback socket IP to be tracked, hits=%v", st.hits)
+	}
+}
+
 func newAuthFailStateForTest() *authFailState {
 	return &authFailState{
 		hits:         make(map[string][]time.Time),

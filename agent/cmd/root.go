@@ -35,58 +35,50 @@ var RootCmd = &cobra.Command{
 	Use:   "mango-agent",
 	Short: "mango-agent is the node telemetry and zero-trust management daemon for Mangohub",
 	Long:  `mango-agent gathers high-frequency telemetry (CPU, RAM, disk IO, network, latency, miners) and executes zero-trust management commands.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// Notification helpers must not load the service's config or credentials.
-		if flags.ShowWarning {
-			ShowToast()
-			return nil
-		}
-		loadFromEnv() // 从环境变量加载配置，覆盖解析
-		if flags.ConfigFile != "" {
-			bytes, err := os.ReadFile(flags.ConfigFile)
-			if err != nil {
-				return fmt.Errorf("failed to read config file: %w", err)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Notification helpers must not load the service's config or credentials.
+			if flags.ShowWarning {
+				ShowToast()
+				return nil
 			}
-			err = json.Unmarshal(bytes, flags)
-			if err != nil {
-				return fmt.Errorf("failed to parse config file: %w", err)
+			if err := loadConfiguration(cmd); err != nil {
+				return err
 			}
-		}
-		if flags.PreferIPVersion != "" && flags.PreferIPVersion != "4" && flags.PreferIPVersion != "6" {
-			return fmt.Errorf("invalid --prefer-ip-version value %q: expected 4 or 6", flags.PreferIPVersion)
-		}
-		// 捕获中止信号，优雅退出
-		stopCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-		defer stop()
+			if flags.PreferIPVersion != "" && flags.PreferIPVersion != "4" && flags.PreferIPVersion != "6" {
+				return fmt.Errorf("invalid --prefer-ip-version value %q: expected 4 or 6", flags.PreferIPVersion)
+			}
+			// 捕获中止信号，优雅退出
+			stopCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+			defer stop()
 
-		stopWarning := startSecurityWarning(stopCtx)
-		defer stopWarning()
-		shutdown := newShutdownCoordinator(stopWarning, netstatic.Stop, os.Exit)
-		go func() {
-			<-stopCtx.Done()
-			log.Printf("shutting down gracefully...")
-			shutdown.shutdown(0)
-		}()
+			stopWarning := startSecurityWarning(stopCtx)
+			defer stopWarning()
+			shutdown := newShutdownCoordinator(stopWarning, netstatic.Stop, os.Exit)
+			go func() {
+				<-stopCtx.Done()
+				log.Printf("shutting down gracefully...")
+				shutdown.shutdown(0)
+			}()
 
-		if flags.MonthRotate != 0 {
-			err := netstatic.StartOrContinue()
-			if err != nil {
-				log.Println("Failed to start netstatic monitoring:", err)
+			if flags.MonthRotate != 0 {
+				err := netstatic.StartOrContinue()
+				if err != nil {
+					log.Println("Failed to start netstatic monitoring:", err)
+				}
+				nics, err := monitoring.InterfaceList()
+				if err != nil {
+					log.Println("Failed to get interface list for netstatic:", err)
+				}
+				err = netstatic.SetNewConfig(netstatic.NetStaticConfig{
+					Nics: nics,
+				})
+				if err != nil {
+					log.Println("Failed to set netstatic config:", err)
+				}
 			}
-			nics, err := monitoring.InterfaceList()
-			if err != nil {
-				log.Println("Failed to get interface list for netstatic:", err)
-			}
-			err = netstatic.SetNewConfig(netstatic.NetStaticConfig{
-				Nics: nics,
-			})
-			if err != nil {
-				log.Println("Failed to set netstatic config:", err)
-			}
-		}
 
-		log.Println("Komari Agent", update.CurrentVersion)
-		log.Println("Github Repo:", update.Repo)
+			log.Println("Mangohub Agent", update.CurrentVersion)
+			log.Println("Github Repo:", update.Repo)
 		if flags.PreferCgroupLimits {
 			log.Println("Prefer cgroup limits: memory/CPU quotas over host /proc when finite")
 			if runtime.GOOS == "linux" {
@@ -244,46 +236,86 @@ func init() {
 	RootCmd.PersistentFlags().ParseErrorsWhitelist.UnknownFlags = true
 }
 
-func loadFromEnv() {
-	val := reflect.ValueOf(flags).Elem()
-	typ := val.Type()
+func loadConfiguration(cmd *cobra.Command) error {
+	configFile := flags.ConfigFile
+	if !cmd.Flags().Changed("config") {
+		if envConfigFile := os.Getenv("AGENT_CONFIG_FILE"); envConfigFile != "" {
+			configFile = envConfigFile
+		}
+	}
 
-	for i := 0; i < val.NumField(); i++ {
-		field := val.Field(i)
+	var fileConfig pkg_flags.Config
+	if configFile != "" {
+		bytes, err := os.ReadFile(configFile)
+		if err != nil {
+			return fmt.Errorf("failed to read config file: %w", err)
+		}
+		if err := json.Unmarshal(bytes, &fileConfig); err != nil {
+			return fmt.Errorf("failed to parse config file: %w", err)
+		}
+	}
+
+	applyPrecedence(cmd, &fileConfig)
+	return nil
+}
+
+func applyPrecedence(cmd *cobra.Command, fileCfg *pkg_flags.Config) {
+	valFlags := reflect.ValueOf(flags).Elem()
+	valFile := reflect.ValueOf(fileCfg).Elem()
+	typ := valFlags.Type()
+
+	for i := 0; i < valFlags.NumField(); i++ {
+		field := valFlags.Field(i)
+		fileField := valFile.Field(i)
 		fieldType := typ.Field(i)
 
-		// Get the env tag
+		flagTag := fieldType.Tag.Get("flag")
 		envTag := fieldType.Tag.Get("env")
-		if envTag == "" {
+
+		// 1. 命令行参数优先级最高：若显式传入，则绝对不被环境变量或配置文件覆盖
+		if flagTag != "" && (cmd.Flags().Changed(flagTag) || cmd.PersistentFlags().Changed(flagTag)) {
 			continue
 		}
 
-		// Get the environment variable value
-		envValue := os.Getenv(envTag)
-		if envValue == "" {
-			continue
+		// 2. 环境变量优先级次之：若定义了环境变量，则覆盖配置文件及默认值
+		if envTag != "" {
+			envVal := os.Getenv(envTag)
+			if envVal != "" {
+				setFieldFromString(field, envVal)
+				continue
+			}
 		}
 
-		// Set the field based on its type
-		switch field.Kind() {
-		case reflect.String:
-			field.SetString(envValue)
-		case reflect.Bool:
-			if strings.ToLower(envValue) == "true" || envValue == "1" {
-				field.SetBool(true)
-			}
-		case reflect.Int:
-			if intVal, err := strconv.Atoi(envValue); err == nil {
-				field.SetInt(int64(intVal))
-			}
-		case reflect.Uint64:
-			if uVal, err := strconv.ParseUint(envValue, 10, 64); err == nil {
-				field.SetUint(uVal)
-			}
-		case reflect.Float64:
-			if floatVal, err := strconv.ParseFloat(envValue, 64); err == nil {
-				field.SetFloat(floatVal)
-			}
+		// 3. 配置文件优先级再次：若配置文件中存在非零值，则载入
+		if !fileField.IsZero() {
+			field.Set(fileField)
+		}
+
+		// 4. 其余情况保留默认值
+	}
+}
+
+func setFieldFromString(field reflect.Value, val string) {
+	switch field.Kind() {
+	case reflect.String:
+		field.SetString(val)
+	case reflect.Bool:
+		if strings.EqualFold(val, "true") || val == "1" {
+			field.SetBool(true)
+		} else if strings.EqualFold(val, "false") || val == "0" {
+			field.SetBool(false)
+		}
+	case reflect.Int:
+		if intVal, err := strconv.Atoi(val); err == nil {
+			field.SetInt(int64(intVal))
+		}
+	case reflect.Uint64:
+		if uVal, err := strconv.ParseUint(val, 10, 64); err == nil {
+			field.SetUint(uVal)
+		}
+	case reflect.Float64:
+		if floatVal, err := strconv.ParseFloat(val, 64); err == nil {
+			field.SetFloat(floatVal)
 		}
 	}
 }

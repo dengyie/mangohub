@@ -15,8 +15,9 @@ import (
 )
 
 var (
-	leaseMu     sync.Mutex
-	leaseTimers = make(map[string]*time.Timer)
+	leaseMu          sync.Mutex
+	leaseTimers      = make(map[string]*time.Timer)
+	leaseGenerations = make(map[string]uint64)
 )
 
 const leaseTagPrefix = "# MANGOHUB_TICKET:"
@@ -127,8 +128,21 @@ func writeAuthorizedKeysAtomic(authPath string, content []byte, targetUser strin
 
 // AuthorizeKey 将指定的公钥以租约形式注入 authorized_keys，并配置过期时间
 func AuthorizeKey(ticketID, pubKey, targetUser string, expiresAt time.Time) error {
+	ticketID = strings.TrimSpace(ticketID)
+	pubKey = strings.TrimSpace(pubKey)
 	if ticketID == "" || pubKey == "" {
 		return fmt.Errorf("ticket_id and public_key are required")
+	}
+
+	// 严密校验公钥与票据，杜绝换行注入攻击
+	if strings.ContainsAny(ticketID, "\r\n \t") {
+		return fmt.Errorf("ticket_id contains invalid whitespace or newline characters")
+	}
+	if strings.ContainsAny(pubKey, "\r\n") {
+		return fmt.Errorf("public_key must be a single line and cannot contain newlines")
+	}
+	if strings.ContainsAny(targetUser, "\r\n\x00") {
+		return fmt.Errorf("target_user contains invalid characters")
 	}
 
 	authPath, err := ResolveAuthorizedKeysPath(targetUser)
@@ -168,7 +182,9 @@ func authorizeKeyAtPath(authPath, ticketID, pubKey, targetUser string, expiresAt
 
 	log.Printf("[sshauth] Authorized SSH key for ticket %s (expires: %s) to %s", ticketID, expiresAt.Format(time.RFC3339), authPath)
 
-	// 启动/重设本地自动回收定时器
+	// 递增租约代数并启动/重设本地自动回收定时器，杜绝并发续期注销竞态
+	leaseGenerations[ticketID]++
+	currentGen := leaseGenerations[ticketID]
 	if t, exists := leaseTimers[ticketID]; exists {
 		t.Stop()
 	}
@@ -177,6 +193,12 @@ func authorizeKeyAtPath(authPath, ticketID, pubKey, targetUser string, expiresAt
 		remaining = 5 * time.Second
 	}
 	leaseTimers[ticketID] = time.AfterFunc(remaining, func() {
+		leaseMu.Lock()
+		if gen, ok := leaseGenerations[ticketID]; !ok || gen != currentGen {
+			leaseMu.Unlock()
+			return
+		}
+		leaseMu.Unlock()
 		_ = RevokeKey(ticketID, targetUser)
 	})
 
@@ -225,6 +247,7 @@ func revokeKeyAtPath(authPath, ticketID, targetUser string) error {
 		t.Stop()
 		delete(leaseTimers, ticketID)
 	}
+	delete(leaseGenerations, ticketID)
 
 	return removeKeyByTicketLocked(authPath, ticketID, targetUser)
 }
@@ -254,10 +277,16 @@ func removeKeyByTicketLocked(authPath, ticketID, targetUser string) error {
 			continue
 		}
 		if skipNextKey {
-			skipNextKey = false
-			if !strings.HasPrefix(trimmed, leaseTagPrefix) {
+			if trimmed == "" {
+				// 标记与实际公钥行之间可能存在空行，忽略空行并保持跳过状态
 				continue
 			}
+			skipNextKey = false
+			if !strings.HasPrefix(trimmed, leaseTagPrefix) {
+				// 成功消耗并跳过该租约所绑定的公钥行
+				continue
+			}
+			// 若下一行直接是另一个租约标记，则按新标记规则流转
 		}
 		if trimmed != "" {
 			newLines = append(newLines, line)
@@ -392,6 +421,10 @@ func reconcileLeasesAtPath(authPath, targetUser string) (int, error) {
 		}
 
 		if skipNext {
+			if trimmed == "" {
+				// 标记与实际公钥行之间可能存在空行，忽略空行并保持跳过状态
+				continue
+			}
 			skipNext = false
 			if !strings.HasPrefix(trimmed, leaseTagPrefix) {
 				continue
@@ -415,12 +448,14 @@ func reconcileLeasesAtPath(authPath, targetUser string) (int, error) {
 		log.Printf("[sshauth] Reconcile cleaned %d expired SSH leases from %s", len(expiredTickets), authPath)
 	}
 
-	// 为尚未过期的租约恢复定时器
+	// 为尚未过期的租约恢复定时器并生成最新代数，杜绝并发竞争
 	rearmed := 0
 	for ticketID, expUnix := range activeLeases {
 		if _, exists := leaseTimers[ticketID]; exists {
 			continue
 		}
+		leaseGenerations[ticketID]++
+		currentGen := leaseGenerations[ticketID]
 		tID := ticketID
 		uUser := targetUser
 		rem := time.Until(time.Unix(expUnix, 0))
@@ -428,6 +463,12 @@ func reconcileLeasesAtPath(authPath, targetUser string) (int, error) {
 			rem = 1 * time.Second
 		}
 		leaseTimers[tID] = time.AfterFunc(rem, func() {
+			leaseMu.Lock()
+			if gen, ok := leaseGenerations[tID]; !ok || gen != currentGen {
+				leaseMu.Unlock()
+				return
+			}
+			leaseMu.Unlock()
 			_ = RevokeKey(tID, uUser)
 		})
 		rearmed++

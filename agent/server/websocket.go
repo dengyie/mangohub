@@ -181,6 +181,7 @@ func runV2PullLoop(ctx context.Context) {
 			return
 		default:
 		}
+		pullStart := time.Now()
 		pullID := fmt.Sprintf("pull-%d", time.Now().UnixNano())
 		ackIDs := snapshotV2AckEventIDs()
 		payload := v2.NewRequest(pullID, v2.MethodAgentPull, map[string]interface{}{
@@ -204,6 +205,18 @@ func runV2PullLoop(ctx context.Context) {
 		}
 		clearV2AckEventIDs(ackIDs)
 		processV2ResponseEvents(resp)
+
+		// 防空转保护：当服务端或反向代理立即返回响应（如无挂起或快速返回）时，
+		// 施加保底节流延时，防止在 HTTP 降级长轮询下进入死循环打满 CPU。
+		if elapsed := time.Since(pullStart); elapsed < 200*time.Millisecond {
+			backoffTimer := time.NewTimer(200*time.Millisecond - elapsed)
+			select {
+			case <-ctx.Done():
+				backoffTimer.Stop()
+				return
+			case <-backoffTimer.C:
+			}
+		}
 	}
 }
 

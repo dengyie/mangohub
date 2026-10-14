@@ -30,8 +30,9 @@ import (
 	"github.com/dengyie/mangohub/hub/pkg/jsruntime/fetch"
 	"github.com/dengyie/mangohub/hub/pkg/jsruntime/fs"
 	httpmodule "github.com/dengyie/mangohub/hub/pkg/jsruntime/http"
-	"github.com/dengyie/mangohub/hub/pkg/jsruntime/internal/bridge"
-	netmodule "github.com/dengyie/mangohub/hub/pkg/jsruntime/net"
+		"github.com/dengyie/mangohub/hub/pkg/jsruntime/internal/bridge"
+		"github.com/dengyie/mangohub/hub/pkg/jsruntime/internal/filepathutil"
+		netmodule "github.com/dengyie/mangohub/hub/pkg/jsruntime/net"
 	pathmodule "github.com/dengyie/mangohub/hub/pkg/jsruntime/path"
 	processmodule "github.com/dengyie/mangohub/hub/pkg/jsruntime/process"
 	"github.com/dengyie/mangohub/hub/pkg/jsruntime/timers"
@@ -383,7 +384,8 @@ func confinedSourceLoader(baseDir string, loader require.SourceLoader) require.S
 			return nil, fmt.Errorf("resolve JavaScript module path: %w", err)
 		}
 		absolute = filepath.Clean(absolute)
-		if !pathWithinBaseDir(baseDir, absolute) {
+		canonical := filepathutil.EvalCanonicalPath(absolute)
+		if !pathWithinBaseDir(baseDir, absolute) && !pathWithinBaseDir(baseDir, canonical) {
 			return nil, fmt.Errorf("JavaScript module path escapes BaseDir: %s", modulePath)
 		}
 

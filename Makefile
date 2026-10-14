@@ -1,10 +1,11 @@
-.PHONY: all agent hub test clean
+.PHONY: all build agent hub test clean
 
 VERSION ?= $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
 VERSION_HASH ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BIN_DIR := ./bin
 
 all: agent hub
+build: all
 
 agent:
 	@mkdir -p $(BIN_DIR)

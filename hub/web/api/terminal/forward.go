@@ -27,13 +27,16 @@ func ForwardTerminal(id string, browser, agent *connection.SafeConn) {
 
 	auditlog.Log(requesterIp, userUUID, "established, terminal id:"+id, "terminal")
 	established_time := time.Now()
-	errChan := make(chan error, 1)
+	errChan := make(chan error, 2)
 
 	go func() {
 		for {
 			messageType, data, err := browser.ReadMessage()
 			if err != nil {
-				errChan <- err
+				select {
+				case errChan <- err:
+				default:
+				}
 				return
 			}
 
@@ -48,7 +51,10 @@ func ForwardTerminal(id string, browser, agent *connection.SafeConn) {
 					if control.Type == "close" {
 						_ = agent.WriteJSON(gin.H{"type": "close"})
 						closeSession(id)
-						errChan <- nil
+						select {
+						case errChan <- nil:
+						default:
+						}
 						return
 					}
 				}
@@ -62,7 +68,10 @@ func ForwardTerminal(id string, browser, agent *connection.SafeConn) {
 			}
 
 			if err != nil {
-				errChan <- err
+				select {
+				case errChan <- err:
+				default:
+				}
 				return
 			}
 		}
@@ -72,12 +81,18 @@ func ForwardTerminal(id string, browser, agent *connection.SafeConn) {
 		for {
 			_, data, err := agent.ReadMessage()
 			if err != nil {
-				errChan <- err
+				select {
+				case errChan <- err:
+				default:
+				}
 				return
 			}
 			err = browser.WriteMessage(websocket.BinaryMessage, data)
 			if err != nil {
-				errChan <- err
+				select {
+				case errChan <- err:
+				default:
+				}
 				return
 			}
 		}
@@ -85,6 +100,8 @@ func ForwardTerminal(id string, browser, agent *connection.SafeConn) {
 
 	// 等待错误或主动关闭
 	<-errChan
+	_ = browser.Close()
+	_ = agent.Close()
 	suspendSession(id, browser, agent)
 	disconnect_time := time.Now()
 	auditlog.Log(requesterIp, userUUID, "disconnected, terminal id:"+id+", duration:"+disconnect_time.Sub(established_time).String(), "terminal")

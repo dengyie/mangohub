@@ -319,3 +319,53 @@ func TestCancelUploadStreamsInterruptsActiveStream(t *testing.T) {
 	end()
 	waitUploadStreams("cancel-active")
 }
+
+func TestUploadIDPathTraversalRejected(t *testing.T) {
+	maliciousIDs := []string{
+		"../traversal",
+		"..\\traversal",
+		"../../etc/passwd",
+		"foo/bar",
+		"foo\\bar",
+		"foo\x00bar",
+		".",
+		"..",
+		"foo/../../bar",
+	}
+
+	for _, badID := range maliciousIDs {
+		t.Run(badID, func(t *testing.T) {
+			_, err := parseUploadStreamSpec(map[string]interface{}{
+				"path":        "/tmp/test.txt",
+				"upload_id":   badID,
+				"total_size":  int64(100),
+				"chunk_size":  int64(100),
+				"chunk_count": int64(1),
+				"chunk_index": int64(0),
+				"offset":      int64(0),
+			})
+			if err == nil {
+				t.Fatalf("expected parseUploadStreamSpec to reject bad upload_id %q", badID)
+			}
+
+			_, err = cancelFileUpload(map[string]interface{}{
+				"path":      "/tmp/test.txt",
+				"upload_id": badID,
+			})
+			if err == nil {
+				t.Fatalf("expected cancelFileUpload to reject bad upload_id %q", badID)
+			}
+
+			_, err = commitFileUpload(map[string]interface{}{
+				"path":        "/tmp/test.txt",
+				"upload_id":   badID,
+				"total_size":  int64(100),
+				"chunk_size":  int64(100),
+				"chunk_count": int64(1),
+			})
+			if err == nil {
+				t.Fatalf("expected commitFileUpload to reject bad upload_id %q", badID)
+			}
+		})
+	}
+}

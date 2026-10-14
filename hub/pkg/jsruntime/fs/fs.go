@@ -245,13 +245,15 @@ func (m *Module) resolveNodePathAt(name, cwd string, allowMissing bool, mode nod
 }
 
 // isConfinedRoot reports whether path is exactly one of the confined roots
-// (BaseDir or an extra root) after cleaning.
+// (BaseDir or an extra root) after cleaning and symlink canonicalization.
 func (m *Module) isConfinedRoot(path string) bool {
-	if m.nodeRoot != "" && filepath.Clean(m.nodeRoot) == path {
+	cleaned := filepath.Clean(path)
+	canonical := filepathutil.EvalCanonicalPath(cleaned)
+	if m.nodeRoot != "" && (filepath.Clean(m.nodeRoot) == cleaned || filepath.Clean(m.nodeRoot) == canonical) {
 		return true
 	}
 	for _, extra := range m.extraRoots {
-		if filepath.Clean(extra.path) == path {
+		if filepath.Clean(extra.path) == cleaned || filepath.Clean(extra.path) == canonical {
 			return true
 		}
 	}
@@ -267,6 +269,17 @@ func (m *Module) withinAnyRoot(path string) bool {
 	for _, extra := range m.extraRoots {
 		if filepathutil.WithinBase(extra.path, path) {
 			return true
+		}
+	}
+	canonical := filepathutil.EvalCanonicalPath(path)
+	if canonical != path {
+		if filepathutil.WithinBase(m.nodeRoot, canonical) {
+			return true
+		}
+		for _, extra := range m.extraRoots {
+			if filepathutil.WithinBase(extra.path, canonical) {
+				return true
+			}
 		}
 	}
 	return false
@@ -706,8 +719,13 @@ func fsMode(value goja.Value, fallback os.FileMode) os.FileMode {
 		if err == nil {
 			return os.FileMode(mode)
 		}
+		return fallback
 	}
-	return os.FileMode(value.ToInteger())
+	v := value.ToInteger()
+	if v == 0 {
+		return fallback
+	}
+	return os.FileMode(v)
 }
 
 func fsAccessMode(value goja.Value) int {

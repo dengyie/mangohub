@@ -128,3 +128,110 @@ func TestResolveAuthorizedKeysPathUnknownUserErrors(t *testing.T) {
 		t.Fatalf("empty targetUser should fall back to current user, got %q, %v", p, err)
 	}
 }
+
+func TestAuthorizeKeyRejectsMultilineAndWhitespace(t *testing.T) {
+	validTicket := "valid-ticket-123"
+	validKey := "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAValidKey user@example"
+	exp := time.Now().Add(10 * time.Minute)
+
+	// Multiline key
+	err := AuthorizeKey(validTicket, validKey+"\nssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC...", "", exp)
+	if err == nil {
+		t.Fatal("expected error for multiline public key injection")
+	}
+
+	// Multiline ticket
+	err = AuthorizeKey("ticket\ninjection", validKey, "", exp)
+	if err == nil {
+		t.Fatal("expected error for newline in ticketID")
+	}
+
+	// Whitespace in ticket
+	err = AuthorizeKey("ticket with spaces", validKey, "", exp)
+	if err == nil {
+		t.Fatal("expected error for whitespace in ticketID")
+	}
+}
+
+func TestRevokeKeyWithInterleavedBlankLines(t *testing.T) {
+	tmpDir := t.TempDir()
+	authPath := filepath.Join(tmpDir, "authorized_keys")
+
+	existingKey := "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAAdmin admin@host"
+	ticketID := "blank-line-ticket"
+	targetKey := "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAATargetKey guest@host"
+
+	// Construct file with blank lines between tag and key
+	lines := []string{
+		existingKey,
+		"",
+		fmt.Sprintf("%s%s EXP:%d", leaseTagPrefix, ticketID, time.Now().Add(10*time.Minute).Unix()),
+		"", // Blank line between tag and key!
+		targetKey,
+		"",
+	}
+	if err := writeAuthorizedKeysAtomic(authPath, []byte(strings.Join(lines, "\n")), ""); err != nil {
+		t.Fatal(err)
+	}
+
+	leaseMu.Lock()
+	err := removeKeyByTicketLocked(authPath, ticketID, "")
+	leaseMu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	content, err := os.ReadFile(authPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	strContent := string(content)
+	if strings.Contains(strContent, targetKey) {
+		t.Fatal("targetKey should have been removed even when separated by a blank line!")
+	}
+	if strings.Contains(strContent, ticketID) {
+		t.Fatal("ticket tag should have been removed!")
+	}
+	if !strings.Contains(strContent, existingKey) {
+		t.Fatal("existingKey should have been preserved!")
+	}
+}
+
+func TestReconcileLeasesWithInterleavedBlankLines(t *testing.T) {
+	tmpDir := t.TempDir()
+	authPath := filepath.Join(tmpDir, "authorized_keys")
+
+	existingKey := "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAAdmin admin@host"
+	staleTicket := "stale-with-blanks"
+	staleKey := "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAStaleKey guest@host"
+
+	lines := []string{
+		existingKey,
+		fmt.Sprintf("%s%s EXP:%d", leaseTagPrefix, staleTicket, time.Now().Add(-10*time.Minute).Unix()),
+		"", // Blank line!
+		staleKey,
+	}
+	if err := writeAuthorizedKeysAtomic(authPath, []byte(strings.Join(lines, "\n")), ""); err != nil {
+		t.Fatal(err)
+	}
+
+	cleaned, err := reconcileLeasesAtPath(authPath, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cleaned != 1 {
+		t.Fatalf("expected 1 cleaned lease, got %d", cleaned)
+	}
+
+	content, err := os.ReadFile(authPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	strContent := string(content)
+	if strings.Contains(strContent, staleKey) {
+		t.Fatal("staleKey should have been pruned despite interleaved blank line!")
+	}
+	if !strings.Contains(strContent, existingKey) {
+		t.Fatal("existingKey should have been preserved!")
+	}
+}

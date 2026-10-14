@@ -76,6 +76,10 @@ type Store struct {
 	// the raw late-arrival window to pass.
 	coarseMu sync.RWMutex
 	coarse   map[coarseRollupKey]*coarseRollup
+	// defCacheMu protects in-memory cached metric definitions and timestamp.
+	defCacheMu sync.RWMutex
+	defCache   []Definition
+	defCacheAt time.Time
 	// mu protects closed state.
 	//
 	// mu 保护 closed 状态。
@@ -387,10 +391,11 @@ func (s *Store) Close() error {
 	s.rawMu.Unlock()
 	// Coarse summaries deliberately remain process-local until their window is
 	// sealed. The configured behavior drops an unsealed parent on shutdown.
-	s.coarseMu.Lock()
-	s.coarse = nil
-	s.coarseMu.Unlock()
-	if s.ownedReadDB && s.readDB != nil {
+		s.coarseMu.Lock()
+		s.coarse = nil
+		s.coarseMu.Unlock()
+		s.invalidateDefCache()
+		if s.ownedReadDB && s.readDB != nil {
 		if err := s.readDB.Close(); err != nil {
 			firstErr = err
 		}
@@ -480,54 +485,60 @@ func (s *Store) CreateMetric(ctx context.Context, def Definition) error {
 		now,
 		now,
 	)
-	if err != nil && isUniqueViolation(err) {
-		return fmt.Errorf("%w: metric %q", ErrAlreadyExists, def.Name)
+		if err != nil && isUniqueViolation(err) {
+			return fmt.Errorf("%w: metric %q", ErrAlreadyExists, def.Name)
+		}
+		if err == nil {
+			s.invalidateDefCache()
+		}
+		return err
 	}
-	return err
-}
 
-// UpsertMetric inserts a metric definition or, if one with the same name already
-// exists, updates its mutable fields (type, unit, description, retention,
-// metadata). Use this when you intentionally want create-or-replace semantics;
-// use CreateMetric when a duplicate name should be an error.
-//
-// UpsertMetric 插入指标定义；如果已存在同名定义，则更新其可变字段
-// （type、unit、description、retention、metadata）。当你明确需要“创建或替换”
-// 语义时使用它；当重复名称应视为错误时使用 CreateMetric。
-func (s *Store) UpsertMetric(ctx context.Context, def Definition) error {
-	if err := s.ensureOpen(); err != nil {
-		return err
-	}
-	def = def.withDefaults()
-	if err := def.Validate(); err != nil {
-		return err
-	}
-	if def.RetentionDays == 0 {
-		// Serialize the zero-retention transition with writes and compaction before
-		// changing the definition or removing data left by an enabled definition.
-		s.retentionMu.Lock()
-		defer s.retentionMu.Unlock()
-	}
-	metadata, err := encodeMap(def.Metadata)
-	if err != nil {
-		return err
-	}
-	now := timeMillis(time.Now())
-	_, err = s.db.ExecContext(
-		ctx,
-		s.dialect.insertDefinitionSQL(s.tables),
-		def.Name,
-		string(def.Type),
-		def.Unit,
-		def.Description,
-		def.RetentionDays,
-		metadata,
-		now,
-		now,
-	)
-	if err != nil || def.RetentionDays != 0 {
-		return err
-	}
+	// UpsertMetric inserts a metric definition or, if one with the same name already
+	// exists, updates its mutable fields (type, unit, description, retention,
+	// metadata). Use this when you intentionally want create-or-replace semantics;
+	// use CreateMetric when a duplicate name should be an error.
+	//
+	// UpsertMetric 插入指标定义；如果已存在同名定义，则更新其可变字段
+	// （type、unit、description、retention、metadata）。当你明确需要“创建或替换”
+	// 语义时使用它；当重复名称应视为错误时使用 CreateMetric。
+	func (s *Store) UpsertMetric(ctx context.Context, def Definition) error {
+		if err := s.ensureOpen(); err != nil {
+			return err
+		}
+		def = def.withDefaults()
+		if err := def.Validate(); err != nil {
+			return err
+		}
+		if def.RetentionDays == 0 {
+			// Serialize the zero-retention transition with writes and compaction before
+			// changing the definition or removing data left by an enabled definition.
+			s.retentionMu.Lock()
+			defer s.retentionMu.Unlock()
+		}
+		metadata, err := encodeMap(def.Metadata)
+		if err != nil {
+			return err
+		}
+		now := timeMillis(time.Now())
+		_, err = s.db.ExecContext(
+			ctx,
+			s.dialect.insertDefinitionSQL(s.tables),
+			def.Name,
+			string(def.Type),
+			def.Unit,
+			def.Description,
+			def.RetentionDays,
+			metadata,
+			now,
+			now,
+		)
+		if err == nil {
+			s.invalidateDefCache()
+		}
+		if err != nil || def.RetentionDays != 0 {
+			return err
+		}
 	_, err = s.deleteSeries(ctx, Query{MetricName: def.Name})
 	return err
 }
@@ -539,9 +550,21 @@ func (s *Store) GetMetric(ctx context.Context, name string) (Definition, error) 
 	if err := s.ensureOpen(); err != nil {
 		return Definition{}, err
 	}
-	if strings.TrimSpace(name) == "" {
+	name = strings.TrimSpace(name)
+	if name == "" {
 		return Definition{}, fmt.Errorf("%w: metric name is required", ErrInvalidArgument)
 	}
+
+	// 快速路径：先检索内存中的定义缓存
+	defs, err := s.ListMetrics(ctx)
+	if err == nil {
+		for _, def := range defs {
+			if def.Name == name {
+				return def, nil
+			}
+		}
+	}
+
 	row := s.reader().QueryRowContext(ctx, fmt.Sprintf(
 		`SELECT name, type, unit, description, retention_days, metadata, created_at_milli, updated_at_milli FROM %s WHERE name = %s`,
 		s.tables.definitions, s.dialect.placeholder(1),
@@ -550,8 +573,13 @@ func (s *Store) GetMetric(ctx context.Context, name string) (Definition, error) 
 	if errors.Is(err, sql.ErrNoRows) {
 		return Definition{}, ErrNotFound
 	}
+	if err == nil {
+		s.invalidateDefCache()
+	}
 	return def, err
 }
+
+const defCacheTTL = 30 * time.Second
 
 // ListMetrics lists all metric definitions.
 //
@@ -560,6 +588,24 @@ func (s *Store) ListMetrics(ctx context.Context) ([]Definition, error) {
 	if err := s.ensureOpen(); err != nil {
 		return nil, err
 	}
+
+	s.defCacheMu.RLock()
+	if !s.defCacheAt.IsZero() && time.Since(s.defCacheAt) < defCacheTTL {
+		out := make([]Definition, len(s.defCache))
+		copy(out, s.defCache)
+		s.defCacheMu.RUnlock()
+		return out, nil
+	}
+	s.defCacheMu.RUnlock()
+
+	s.defCacheMu.Lock()
+	defer s.defCacheMu.Unlock()
+	if !s.defCacheAt.IsZero() && time.Since(s.defCacheAt) < defCacheTTL {
+		out := make([]Definition, len(s.defCache))
+		copy(out, s.defCache)
+		return out, nil
+	}
+
 	rows, err := s.reader().QueryContext(ctx, fmt.Sprintf(
 		`SELECT name, type, unit, description, retention_days, metadata, created_at_milli, updated_at_milli FROM %s ORDER BY name ASC`,
 		s.tables.definitions,
@@ -577,7 +623,24 @@ func (s *Store) ListMetrics(ctx context.Context) ([]Definition, error) {
 		}
 		out = append(out, def)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	s.defCache = make([]Definition, len(out))
+	copy(s.defCache, out)
+	s.defCacheAt = time.Now()
+
+	result := make([]Definition, len(out))
+	copy(result, out)
+	return result, nil
+}
+
+func (s *Store) invalidateDefCache() {
+	s.defCacheMu.Lock()
+	s.defCache = nil
+	s.defCacheAt = time.Time{}
+	s.defCacheMu.Unlock()
 }
 
 // DeleteMetric deletes a metric definition and all of its raw and rollup data.
@@ -604,10 +667,11 @@ func (s *Store) DeleteMetric(ctx context.Context, name string) error {
 	if _, err = tx.ExecContext(ctx, fmt.Sprintf(`DELETE FROM %s WHERE name = %s`, s.tables.definitions, s.dialect.placeholder(1)), name); err != nil {
 		return err
 	}
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-	_, rawErr := s.deleteRawPoints(name, "", nil)
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+		s.invalidateDefCache()
+		_, rawErr := s.deleteRawPoints(name, "", nil)
 	_, hotErr := s.deleteHotRollups(name, "", nil, nil)
 	_, coarseErr := s.deleteCoarseRollupsMatching(name, "", nil)
 	return errors.Join(rawErr, hotErr, coarseErr)
@@ -653,10 +717,11 @@ func (s *Store) UpdateMetricRetention(ctx context.Context, name string, retentio
 	if affected == 0 {
 		return Definition{}, fmt.Errorf("%w: metric %q", ErrNotFound, name)
 	}
-	if err := tx.Commit(); err != nil {
-		return Definition{}, err
-	}
-	return s.GetMetric(ctx, name)
+		if err := tx.Commit(); err != nil {
+			return Definition{}, err
+		}
+		s.invalidateDefCache()
+		return s.GetMetric(ctx, name)
 }
 
 // SetMetricRetention updates one metric's retention policy. A value of zero
@@ -704,10 +769,11 @@ func (s *Store) SetMetricRetention(ctx context.Context, name string, retentionDa
 			return Definition{}, err
 		}
 	}
-	if err := tx.Commit(); err != nil {
-		return Definition{}, err
-	}
-	if retentionDays == 0 {
+		if err := tx.Commit(); err != nil {
+			return Definition{}, err
+		}
+		s.invalidateDefCache()
+		if retentionDays == 0 {
 		_, rawErr := s.deleteRawPoints(name, "", nil)
 		_, hotErr := s.deleteHotRollups(name, "", nil, nil)
 		_, coarseErr := s.deleteCoarseRollupsMatching(name, "", nil)

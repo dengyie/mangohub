@@ -43,8 +43,17 @@ func (m *Module) filesystemFor(name string) (*rootedDir, string, func(), error) 
 	if m.nodeFSRoot == nil {
 		return nil, name, m.lifecycleMu.RUnlock, nil
 	}
+	canonical := filepathutil.EvalCanonicalPath(name)
 	if filepathutil.WithinBase(m.nodeRoot, name) {
 		relative, err := filepathutil.RelativeToBase(m.nodeRoot, name)
+		if err != nil {
+			m.lifecycleMu.RUnlock()
+			return nil, "", nil, err
+		}
+		return &rootedDir{path: m.nodeRoot, handle: m.nodeFSRoot}, relative, m.lifecycleMu.RUnlock, nil
+	}
+	if canonical != name && filepathutil.WithinBase(m.nodeRoot, canonical) {
+		relative, err := filepathutil.RelativeToBase(m.nodeRoot, canonical)
 		if err != nil {
 			m.lifecycleMu.RUnlock()
 			return nil, "", nil, err
@@ -57,6 +66,15 @@ func (m *Module) filesystemFor(name string) (*rootedDir, string, func(), error) 
 		}
 		if filepathutil.WithinBase(extra.path, name) {
 			relative, err := filepathutil.RelativeToBase(extra.path, name)
+			if err != nil {
+				m.lifecycleMu.RUnlock()
+				return nil, "", nil, err
+			}
+			entry := extra
+			return &entry, relative, m.lifecycleMu.RUnlock, nil
+		}
+		if canonical != name && filepathutil.WithinBase(extra.path, canonical) {
+			relative, err := filepathutil.RelativeToBase(extra.path, canonical)
 			if err != nil {
 				m.lifecycleMu.RUnlock()
 				return nil, "", nil, err
