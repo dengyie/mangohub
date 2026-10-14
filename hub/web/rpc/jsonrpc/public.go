@@ -123,17 +123,9 @@ func publicGetClientRecentRecords(ctx context.Context, req *rpc.JsonRpcRequest) 
 	return agent_runtime.GetRecentReports(params.UUID), nil
 }
 
-// isHiddenClient 查询指定 uuid 是否为隐藏节点。
+// isHiddenClient 查询指定 uuid 是否为隐藏节点（O(1) 内存快照，无 SQLite 读开销）。
 func isHiddenClient(uuid string) bool {
-	var hiddenClients []models.Client
-	db := dbcore.GetDBInstance()
-	_ = db.Select("uuid").Where("hidden = ?", true).Find(&hiddenClients).Error
-	for _, cli := range hiddenClients {
-		if cli.UUID == uuid {
-			return true
-		}
-	}
-	return false
+	return clients.IsHiddenClient(uuid)
 }
 
 // validRecordsLoadTypes 是 /api/records/load 的 load_type 白名单，

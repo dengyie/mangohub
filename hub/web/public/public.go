@@ -2,18 +2,50 @@ package public
 
 import (
 	"embed"
+	"fmt"
+	"hash/crc32"
 	"io/fs"
 	"mime"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/internal/config"
 )
+
+// serveStaticData 统一向客户端发送带 Cache-Control 与 ETag 的静态资源，支持 HTTP 304 协商缓存。
+func serveStaticData(c *gin.Context, reqPath string, mimeType string, content []byte) {
+	etag := fmt.Sprintf(`"%08x-%x"`, crc32.ChecksumIEEE(content), len(content))
+	c.Header("ETag", etag)
+
+	// 根据文件路径特征下发针对性的 Cache-Control 策略：
+	// 1. Next.js chunks 或 Vite assets 等带 hash 产物：强制永久强缓存 (immutable)
+	// 2. 根目录图标、通用主题资源：设置 1 天强缓存
+	if strings.HasPrefix(reqPath, "/_next/static/") || strings.HasPrefix(reqPath, "/assets/") || strings.Contains(reqPath, "/dist/assets/") {
+		c.Header("Cache-Control", "public, max-age=31536000, immutable")
+	} else {
+		c.Header("Cache-Control", "public, max-age=86400")
+	}
+
+	if match := c.GetHeader("If-None-Match"); match != "" {
+		if match == etag || match == "W/"+etag || match == "*" {
+			c.Status(http.StatusNotModified)
+			return
+		}
+	}
+
+	c.Header("Content-Length", strconv.Itoa(len(content)))
+	if c.Request.Method == http.MethodHead {
+		c.Status(http.StatusOK)
+		return
+	}
+	c.Data(http.StatusOK, mimeType, content)
+}
 
 //go:embed defaultTheme/komari-theme.json
 var PublicFS embed.FS
@@ -264,7 +296,23 @@ func static(r *gin.RouterGroup, noRoute func(handlers ...gin.HandlerFunc), force
 			"</body>", cfg[config.CustomBodyKey].(string)+"</body>",
 		)
 
-		c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(replacer.Replace(htmlStr)))
+		renderedBytes := []byte(replacer.Replace(htmlStr))
+		etag := fmt.Sprintf(`"%08x-%x"`, crc32.ChecksumIEEE(renderedBytes), len(renderedBytes))
+		c.Header("Cache-Control", "no-cache")
+		c.Header("ETag", etag)
+		if match := c.GetHeader("If-None-Match"); match != "" {
+			if match == etag || match == "W/"+etag || match == "*" {
+				c.Status(http.StatusNotModified)
+				return
+			}
+		}
+
+		c.Header("Content-Length", strconv.Itoa(len(renderedBytes)))
+		if c.Request.Method == http.MethodHead {
+			c.Status(http.StatusOK)
+			return
+		}
+		c.Data(http.StatusOK, "text/html; charset=utf-8", renderedBytes)
 	}
 
 	// ================= 路由定义 =================
@@ -280,7 +328,6 @@ func static(r *gin.RouterGroup, noRoute func(handlers ...gin.HandlerFunc), force
 		}
 
 		// 其次：当前主题的 dist/favicon.ico 或 theme_root/favicon.ico ?
-		// 通常构建后的资源在 dist 中，这里假设优先找 dist 内的，如果你的 favicon 在根目录，去掉 DistDir 拼接即可
 		cfg := getConfig()
 		themeFaviconPath := path.Join(DistDir, FaviconFile)
 		currentTheme := cfg[config.ThemeKey].(string)
@@ -289,7 +336,7 @@ func static(r *gin.RouterGroup, noRoute func(handlers ...gin.HandlerFunc), force
 		}
 		content, mimeType, exists := getFileContent(currentTheme, themeFaviconPath)
 		if exists {
-			c.Data(http.StatusOK, mimeType, content)
+			serveStaticData(c, "/favicon.ico", mimeType, content)
 			return
 		}
 
@@ -312,7 +359,7 @@ func static(r *gin.RouterGroup, noRoute func(handlers ...gin.HandlerFunc), force
 
 		content, mimeType, exists := getFileContent(themeID, filePath)
 		if exists {
-			c.Data(http.StatusOK, mimeType, content)
+			serveStaticData(c, filePath, mimeType, content)
 			return
 		}
 		c.Status(http.StatusNotFound)
@@ -378,7 +425,7 @@ func static(r *gin.RouterGroup, noRoute func(handlers ...gin.HandlerFunc), force
 
 		content, mimeType, exists := getFileContent(currentTheme, distPath)
 		if exists {
-			c.Data(http.StatusOK, mimeType, content)
+			serveStaticData(c, reqPath, mimeType, content)
 			return
 		}
 

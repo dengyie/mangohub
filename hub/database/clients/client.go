@@ -14,7 +14,62 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"sync"
 )
+
+var (
+	clientCacheMu   sync.RWMutex
+	cachedClients   []models.Client
+	cachedHiddenMap map[string]bool
+	clientCacheWarm bool
+)
+
+// InvalidateClientCache 使客户端信息和隐藏列表缓存失效
+func InvalidateClientCache() {
+	clientCacheMu.Lock()
+	defer clientCacheMu.Unlock()
+	clientCacheWarm = false
+	cachedClients = nil
+	cachedHiddenMap = nil
+}
+
+func ensureClientCacheLocked(db *gorm.DB) error {
+	if clientCacheWarm {
+		return nil
+	}
+	var cls []models.Client
+	if err := db.Find(&cls).Error; err != nil {
+		return err
+	}
+	cachedClients = cls
+	cachedHiddenMap = make(map[string]bool, len(cls))
+	for _, c := range cls {
+		if c.Hidden {
+			cachedHiddenMap[c.UUID] = true
+		}
+	}
+	clientCacheWarm = true
+	return nil
+}
+
+// IsHiddenClient 快速判断指定 UUID 的客户端是否为隐藏节点（O(1) 内存查询）
+func IsHiddenClient(clientUUID string) bool {
+	clientCacheMu.RLock()
+	if clientCacheWarm {
+		hidden := cachedHiddenMap[clientUUID]
+		clientCacheMu.RUnlock()
+		return hidden
+	}
+	clientCacheMu.RUnlock()
+
+	clientCacheMu.Lock()
+	defer clientCacheMu.Unlock()
+	db := dbcore.GetDBInstance()
+	if err := ensureClientCacheLocked(db); err != nil {
+		return false
+	}
+	return cachedHiddenMap[clientUUID]
+}
 
 func DeleteClient(clientUuid string) error {
 	db := dbcore.GetDBInstance()
@@ -22,6 +77,7 @@ func DeleteClient(clientUuid string) error {
 	if err != nil {
 		return err
 	}
+	InvalidateClientCache()
 	return nil
 }
 
@@ -185,9 +241,14 @@ func applyClientInfoUpdate(db *gorm.DB, clientUUID string, update map[string]int
 			}
 		}
 		if len(minerCols) == 0 {
+			InvalidateClientCache()
 			return nil
 		}
-		return tx.Model(&models.Client{}).Where("uuid = ?", clientUUID).Select(minerCols).Updates(minerFlags).Error
+		if err := tx.Model(&models.Client{}).Where("uuid = ?", clientUUID).Select(minerCols).Updates(minerFlags).Error; err != nil {
+			return err
+		}
+		InvalidateClientCache()
+		return nil
 	})
 }
 
@@ -209,6 +270,7 @@ func CreateClient() (clientUUID, token string, err error) {
 	if err != nil {
 		return "", "", err
 	}
+	InvalidateClientCache()
 	if err := tasks.AddDefaultOnClientUUID(clientUUID); err != nil {
 		logger.ErrorArgs("clients", "Failed to apply default-on ping tasks to new client:", err)
 	}
@@ -234,6 +296,7 @@ func CreateClientWithName(name string) (clientUUID, token string, err error) {
 	if err != nil {
 		return "", "", err
 	}
+	InvalidateClientCache()
 	if err := tasks.AddDefaultOnClientUUID(clientUUID); err != nil {
 		logger.ErrorArgs("clients", "Failed to apply default-on ping tasks to new client:", err)
 	}
@@ -272,12 +335,24 @@ func GetClientTokenByUUID(uuid string) (token string, err error) {
 }
 
 func GetAllClientBasicInfo() (clients []models.Client, err error) {
+	clientCacheMu.RLock()
+	if clientCacheWarm {
+		res := make([]models.Client, len(cachedClients))
+		copy(res, cachedClients)
+		clientCacheMu.RUnlock()
+		return res, nil
+	}
+	clientCacheMu.RUnlock()
+
+	clientCacheMu.Lock()
+	defer clientCacheMu.Unlock()
 	db := dbcore.GetDBInstance()
-	err = db.Find(&clients).Error
-	if err != nil {
+	if err := ensureClientCacheLocked(db); err != nil {
 		return nil, err
 	}
-	return clients, nil
+	res := make([]models.Client, len(cachedClients))
+	copy(res, cachedClients)
+	return res, nil
 }
 
 func SaveClient(updates map[string]interface{}) error {

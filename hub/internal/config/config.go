@@ -22,44 +22,123 @@ func (ConfigItem) TableName() string {
 }
 
 var (
-	db    *gorm.DB
-	SetDb = func(gdb *gorm.DB) {
+	db            *gorm.DB
+	cacheMu       sync.RWMutex
+	cacheMap      map[string]string // key -> json string
+	cacheWarm     bool
+	SetDb         = func(gdb *gorm.DB) {
 		db = gdb
 		if err := db.AutoMigrate(&ConfigItem{}); err != nil {
 			panic("failed to migrate config item table: " + err.Error())
 		}
+		// 预热内存缓存，消除启动后全站的高频 SQLite 读开销
+		warmCache()
 	}
 )
+
+func warmCache() {
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+	cacheMap = make(map[string]string)
+	if db == nil {
+		cacheWarm = true
+		return
+	}
+	var items []ConfigItem
+	if err := db.Find(&items).Error; err == nil {
+		for _, it := range items {
+			cacheMap[it.Key] = it.Value
+		}
+	}
+	cacheWarm = true
+}
+
+func getCachedValue(key string) (string, bool) {
+	cacheMu.RLock()
+	defer cacheMu.RUnlock()
+	if !cacheWarm {
+		return "", false
+	}
+	val, ok := cacheMap[key]
+	return val, ok
+}
+
+func setCacheValue(key string, val string) {
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+	if cacheMap == nil {
+		cacheMap = make(map[string]string)
+	}
+	cacheMap[key] = val
+	cacheWarm = true
+}
+
+func setCacheValues(items map[string]string) {
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+	if cacheMap == nil {
+		cacheMap = make(map[string]string)
+	}
+	for k, v := range items {
+		cacheMap[k] = v
+	}
+	cacheWarm = true
+}
+
+func deleteCacheValue(key string) {
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+	if cacheMap != nil {
+		delete(cacheMap, key)
+	}
+}
+
+func deleteCacheValues(keys []string) {
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+	if cacheMap != nil {
+		for _, k := range keys {
+			delete(cacheMap, k)
+		}
+	}
+}
 
 // GetAs 获取并转换为指定类型 (泛型)，支持数值类型自动转换
 func GetAs[T any](key string, defaul ...any) (T, error) {
 	var t T
-	var item ConfigItem
 
-	err := db.First(&item, "key = ?", key).Error
-	if err != nil {
-		if len(defaul) > 0 {
-			// 尝试直接类型断言
-			if v, ok := defaul[0].(T); ok {
-				err = Set(key, v)
-				return v, err
+	var jsonStr string
+	if cached, ok := getCachedValue(key); ok {
+		jsonStr = cached
+	} else {
+		var item ConfigItem
+		err := db.First(&item, "key = ?", key).Error
+		if err != nil {
+			if len(defaul) > 0 {
+				// 尝试直接类型断言
+				if v, ok := defaul[0].(T); ok {
+					err = Set(key, v)
+					return v, err
+				}
+				// 尝试类型转换
+				val := reflect.ValueOf(&t).Elem()
+				if err := convertAndSet(defaul[0], val); err != nil {
+					return t, fmt.Errorf("default value type mismatch: expected %T, got %T", t, defaul[0])
+				}
+				err = Set(key, t)
+				return t, err
 			}
-			// 尝试类型转换
-			val := reflect.ValueOf(&t).Elem()
-			if err := convertAndSet(defaul[0], val); err != nil {
-				return t, fmt.Errorf("default value type mismatch: expected %T, got %T", t, defaul[0])
-			}
-			err = Set(key, t)
 			return t, err
 		}
-		return t, err
+		jsonStr = item.Value
+		setCacheValue(key, jsonStr)
 	}
 
 	// 先尝试直接反序列化
-	if err = json.Unmarshal([]byte(item.Value), &t); err != nil {
+	if err := json.Unmarshal([]byte(jsonStr), &t); err != nil {
 		// 尝试通用解析后转换
 		var generic any
-		if err := json.Unmarshal([]byte(item.Value), &generic); err != nil {
+		if err := json.Unmarshal([]byte(jsonStr), &generic); err != nil {
 			return t, err
 		}
 		val := reflect.ValueOf(&t).Elem()
@@ -74,30 +153,57 @@ func GetAs[T any](key string, defaul ...any) (T, error) {
 // 如果 defaultValue 为 nil，则数据库不存在时不写入
 // 如果 defaultValue 不为 nil，则数据库不存在时写入默认值
 func GetMany(keys map[string]any) (map[string]any, error) {
-	var items []ConfigItem
 	result := make(map[string]any)
-	keyList := make([]string, 0, len(keys))
-	for k := range keys {
-		keyList = append(keyList, k)
-	}
-	if len(keyList) == 0 {
+	if len(keys) == 0 {
 		return result, nil
-	}
-	if err := db.Where("key IN ?", keyList).Find(&items).Error; err != nil {
-		return nil, err
 	}
 
 	foundKeys := make(map[string]bool)
-	for _, item := range items {
-		var parsed any
-		if err := json.Unmarshal([]byte(item.Value), &parsed); err == nil {
-			result[item.Key] = parsed
-			foundKeys[item.Key] = true
+	var missingKeys []string
+
+	cacheMu.RLock()
+	if cacheWarm {
+		for k := range keys {
+			if val, ok := cacheMap[k]; ok {
+				var parsed any
+				if err := json.Unmarshal([]byte(val), &parsed); err == nil {
+					result[k] = parsed
+					foundKeys[k] = true
+				}
+			} else {
+				missingKeys = append(missingKeys, k)
+			}
+		}
+	} else {
+		for k := range keys {
+			missingKeys = append(missingKeys, k)
+		}
+	}
+	cacheMu.RUnlock()
+
+	// 如果所有 key 都在缓存中命中，直接进入默认值处理/返回
+	if len(missingKeys) > 0 {
+		var items []ConfigItem
+		if err := db.Where("key IN ?", missingKeys).Find(&items).Error; err != nil {
+			return nil, err
+		}
+		newlyCached := make(map[string]string, len(items))
+		for _, item := range items {
+			var parsed any
+			if err := json.Unmarshal([]byte(item.Value), &parsed); err == nil {
+				result[item.Key] = parsed
+				foundKeys[item.Key] = true
+			}
+			newlyCached[item.Key] = item.Value
+		}
+		if len(newlyCached) > 0 {
+			setCacheValues(newlyCached)
 		}
 	}
 
 	// 收集需要写入数据库的默认值
 	var toInsert []ConfigItem
+	defaultsToCache := make(map[string]string)
 	for k, def := range keys {
 		if _, found := foundKeys[k]; !found {
 			if def != nil {
@@ -112,17 +218,20 @@ func GetMany(keys map[string]any) (map[string]any, error) {
 					Key:   k,
 					Value: string(jsonBytes),
 				})
+				defaultsToCache[k] = string(jsonBytes)
 			}
 		}
 	}
 
-	// 批量写入默认值到数据库
+	// 批量写入默认值到数据库与缓存
 	if len(toInsert) > 0 {
 		if err := db.Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "key"}},
 			DoUpdates: clause.AssignmentColumns([]string{"value"}),
 		}).Create(&toInsert).Error; err != nil {
 			logger.Warn("config", "batch insert default config failed", "error", err)
+		} else {
+			setCacheValues(defaultsToCache)
 		}
 	}
 
@@ -176,19 +285,41 @@ func GetManyAs[T any]() (*T, error) {
 		return &t, nil
 	}
 
-	var items []ConfigItem
-	if err := db.Where("key IN ?", keys).Find(&items).Error; err != nil {
-		return nil, err
-	}
+	foundItems := make(map[string]string)
+	var missingKeys []string
 
-	// 建立数据库中存在的 key 映射
-	foundItems := make(map[string]string) // key -> value
-	for _, item := range items {
-		foundItems[item.Key] = item.Value
+	cacheMu.RLock()
+	if cacheWarm {
+		for _, k := range keys {
+			if val, ok := cacheMap[k]; ok {
+				foundItems[k] = val
+			} else {
+				missingKeys = append(missingKeys, k)
+			}
+		}
+	} else {
+		missingKeys = keys
+	}
+	cacheMu.RUnlock()
+
+	if len(missingKeys) > 0 {
+		var items []ConfigItem
+		if err := db.Where("key IN ?", missingKeys).Find(&items).Error; err != nil {
+			return nil, err
+		}
+		newlyCached := make(map[string]string, len(items))
+		for _, item := range items {
+			foundItems[item.Key] = item.Value
+			newlyCached[item.Key] = item.Value
+		}
+		if len(newlyCached) > 0 {
+			setCacheValues(newlyCached)
+		}
 	}
 
 	// 需要写入数据库的新配置项
 	var toInsert []ConfigItem
+	defaultsToCache := make(map[string]string)
 
 	for _, fi := range fields {
 		fieldVal := val.Field(fi.index)
@@ -213,26 +344,29 @@ func GetManyAs[T any]() (*T, error) {
 				logger.Warn("config", "marshal default value failed", "key", fi.key, "error", err)
 				continue
 			}
-			toInsert = append(toInsert, ConfigItem{
-				Key:   fi.key,
-				Value: string(jsonBytes),
-			})
+				toInsert = append(toInsert, ConfigItem{
+					Key:   fi.key,
+					Value: string(jsonBytes),
+				})
+				defaultsToCache[fi.key] = string(jsonBytes)
+			}
+			// 没有 default tag 且数据库中不存在，保持零值，不写入数据库
 		}
-		// 没有 default tag 且数据库中不存在，保持零值，不写入数据库
-	}
 
-	// 批量写入默认值到数据库
-	if len(toInsert) > 0 {
-		if err := db.Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "key"}},
-			DoUpdates: clause.AssignmentColumns([]string{"value"}),
-		}).Create(&toInsert).Error; err != nil {
-			logger.Warn("config", "batch insert default config failed", "error", err)
+		// 批量写入默认值到数据库与缓存
+		if len(toInsert) > 0 {
+			if err := db.Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "key"}},
+				DoUpdates: clause.AssignmentColumns([]string{"value"}),
+			}).Create(&toInsert).Error; err != nil {
+				logger.Warn("config", "batch insert default config failed", "error", err)
+			} else {
+				setCacheValues(defaultsToCache)
+			}
 		}
-	}
 
-	return &t, nil
-}
+		return &t, nil
+	}
 
 // unmarshalToField 将 JSON 字符串反序列化到字段，支持数值类型转换
 func unmarshalToField(jsonStr string, fieldVal reflect.Value) error {
@@ -355,25 +489,47 @@ func convertAndSet(val any, fieldVal reflect.Value) error {
 }
 
 func GetAll() (map[string]any, error) {
-	var items []ConfigItem
 	result := make(map[string]any)
+
+	cacheMu.RLock()
+	if cacheWarm {
+		for k, v := range cacheMap {
+			var parsed any
+			if err := json.Unmarshal([]byte(v), &parsed); err == nil {
+				result[k] = parsed
+			}
+		}
+		cacheMu.RUnlock()
+		return result, nil
+	}
+	cacheMu.RUnlock()
+
+	var items []ConfigItem
 	if err := db.Find(&items).Error; err != nil {
 		return nil, err
 	}
 
+	newlyCached := make(map[string]string, len(items))
 	for _, item := range items {
 		var parsed any
 		if err := json.Unmarshal([]byte(item.Value), &parsed); err == nil {
 			result[item.Key] = parsed
 		}
+		newlyCached[item.Key] = item.Value
 	}
+	setCacheValues(newlyCached)
 	return result, nil
 }
 
 // Set 设置单个配置
 func Set(key string, value any) error {
 	oldVal := map[string]any{}
-	{
+	if cached, ok := getCachedValue(key); ok {
+		var parsed any
+		if err := json.Unmarshal([]byte(cached), &parsed); err == nil {
+			oldVal[key] = parsed
+		}
+	} else {
 		var oldItem ConfigItem
 		if err := db.First(&oldItem, "key = ?", key).Error; err == nil {
 			var parsed any
@@ -401,6 +557,7 @@ func Set(key string, value any) error {
 		return err
 	}
 
+	setCacheValue(key, string(bytes))
 	newVal := map[string]any{key: value}
 	publishEvent(oldVal, newVal)
 	return nil
@@ -408,6 +565,7 @@ func Set(key string, value any) error {
 
 func SetMany(cst map[string]any) error {
 	var items []ConfigItem
+	cacheUpdates := make(map[string]string, len(cst))
 	for k, v := range cst {
 		bytes, err := json.Marshal(v)
 		if err != nil {
@@ -417,6 +575,7 @@ func SetMany(cst map[string]any) error {
 			Key:   k,
 			Value: string(bytes),
 		})
+		cacheUpdates[k] = string(bytes)
 	}
 	if len(items) == 0 {
 		return nil
@@ -434,12 +593,28 @@ func SetMany(cst map[string]any) error {
 
 	oldVal := map[string]any{}
 	if len(keys) > 0 {
-		var oldItems []ConfigItem
-		if err := db.Where("key IN ?", keys).Find(&oldItems).Error; err == nil {
-			for _, oi := range oldItems {
+		var missingOld []string
+		cacheMu.RLock()
+		for _, k := range keys {
+			if cached, ok := cacheMap[k]; ok {
 				var parsed any
-				if err := json.Unmarshal([]byte(oi.Value), &parsed); err == nil {
-					oldVal[oi.Key] = parsed
+				if err := json.Unmarshal([]byte(cached), &parsed); err == nil {
+					oldVal[k] = parsed
+				}
+			} else {
+				missingOld = append(missingOld, k)
+			}
+		}
+		cacheMu.RUnlock()
+
+		if len(missingOld) > 0 {
+			var oldItems []ConfigItem
+			if err := db.Where("key IN ?", missingOld).Find(&oldItems).Error; err == nil {
+				for _, oi := range oldItems {
+					var parsed any
+					if err := json.Unmarshal([]byte(oi.Value), &parsed); err == nil {
+						oldVal[oi.Key] = parsed
+					}
 				}
 			}
 		}
@@ -453,7 +628,51 @@ func SetMany(cst map[string]any) error {
 		return err
 	}
 
+	setCacheValues(cacheUpdates)
 	publishEvent(oldVal, newVal)
+	return nil
+}
+
+// Delete 删除指定配置项并更新缓存与事件
+func Delete(key string) error {
+	oldVal := map[string]any{}
+	if cached, ok := getCachedValue(key); ok {
+		var parsed any
+		if err := json.Unmarshal([]byte(cached), &parsed); err == nil {
+			oldVal[key] = parsed
+		}
+	}
+
+	if err := db.Delete(&ConfigItem{}, "key = ?", key).Error; err != nil {
+		return err
+	}
+
+	deleteCacheValue(key)
+	publishEvent(oldVal, map[string]any{})
+	return nil
+}
+
+// DeleteMany 批量删除指定配置项并更新缓存与事件
+func DeleteMany(keys []string) error {
+	if len(keys) == 0 {
+		return nil
+	}
+	oldVal := map[string]any{}
+	for _, k := range keys {
+		if cached, ok := getCachedValue(k); ok {
+			var parsed any
+			if err := json.Unmarshal([]byte(cached), &parsed); err == nil {
+				oldVal[k] = parsed
+			}
+		}
+	}
+
+	if err := db.Where("key IN ?", keys).Delete(&ConfigItem{}).Error; err != nil {
+		return err
+	}
+
+	deleteCacheValues(keys)
+	publishEvent(oldVal, map[string]any{})
 	return nil
 }
 
