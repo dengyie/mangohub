@@ -29,6 +29,8 @@ type mountTarget struct {
 var (
 	lastDiskIOCounters map[string]disk.IOCountersStat
 	lastDiskSampleTime time.Time
+	mountinfoPath      = "/proc/self/mountinfo"
+	sysDevBlockPath    = "/sys/dev/block"
 )
 
 // filterMountTargets 按 AGENT_INCLUDE_MOUNTPOINTS 过滤分区表，得到 挂载点→设备 映射。
@@ -153,7 +155,7 @@ func resolvePhysicalDevice(mountpoint, dev string) string {
 	if strings.HasPrefix(dev, "/dev/") {
 		return dev
 	}
-	raw, err := os.ReadFile("/proc/self/mountinfo")
+	raw, err := os.ReadFile(mountinfoPath)
 	if err != nil {
 		return dev
 	}
@@ -161,7 +163,7 @@ func resolvePhysicalDevice(mountpoint, dev string) string {
 	if majmin == "" {
 		return dev
 	}
-	link, err := os.Readlink(filepath.Join("/sys/dev/block", majmin))
+	link, err := os.Readlink(filepath.Join(sysDevBlockPath, majmin))
 	if err != nil {
 		return dev
 	}

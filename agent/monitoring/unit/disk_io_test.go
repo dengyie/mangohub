@@ -126,7 +126,12 @@ func TestFindMountinfoMajorMinor(t *testing.T) {
 func TestFilterMountTargetsOverlayFallback(t *testing.T) {
 	orig := flags.IncludeMountpoints
 	flags.IncludeMountpoints = "/"
-	defer func() { flags.IncludeMountpoints = orig }()
+	origMountinfo := mountinfoPath
+	mountinfoPath = "/nonexistent"
+	defer func() {
+		flags.IncludeMountpoints = orig
+		mountinfoPath = origMountinfo
+	}()
 
 	parts := []disk.PartitionStat{
 		{Device: "overlay", Mountpoint: "/", Fstype: "overlay"},
@@ -145,7 +150,12 @@ func TestFilterMountTargetsOverlayFallback(t *testing.T) {
 func TestFilterMountTargetsMixedVirtualAndReal(t *testing.T) {
 	orig := flags.IncludeMountpoints
 	flags.IncludeMountpoints = "/;/tmp/mnt"
-	defer func() { flags.IncludeMountpoints = orig }()
+	origMountinfo := mountinfoPath
+	mountinfoPath = "/nonexistent"
+	defer func() {
+		flags.IncludeMountpoints = orig
+		mountinfoPath = origMountinfo
+	}()
 
 	parts := []disk.PartitionStat{
 		{Device: "overlay", Mountpoint: "/", Fstype: "overlay"},
