@@ -7,8 +7,8 @@ import (
 	"runtime"
 	"unsafe"
 
-	"github.com/dop251/goja"
 	"github.com/dengyie/mangohub/hub/pkg/jsruntime/internal/metrics"
+	"github.com/dop251/goja"
 )
 
 func Load(vm *goja.Runtime, module *goja.Object) {

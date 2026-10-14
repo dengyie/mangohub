@@ -10,7 +10,6 @@ import (
 
 	"github.com/dengyie/mangohub/hub/database"
 	"github.com/dengyie/mangohub/hub/database/clients"
-	"github.com/dengyie/mangohub/hub/database/dbcore"
 	"github.com/dengyie/mangohub/hub/database/models"
 	"github.com/dengyie/mangohub/hub/database/tasks"
 	"github.com/dengyie/mangohub/hub/internal/config"
@@ -514,18 +513,8 @@ func getNodeRecentStatus(ctx context.Context, req *rpc.JsonRpcRequest) (any, *rp
 	}
 
 	// 仅在未登录时需要 Hidden 信息做过滤
-	hiddenMap := map[string]bool{}
-	if !isLogin {
-		var hiddenClients []models.Client
-		db := dbcore.GetDBInstance()
-		_ = db.Select("uuid").Where("hidden = ?", true).Find(&hiddenClients).Error
-		for _, cli := range hiddenClients {
-			hiddenMap[cli.UUID] = true
-		}
-
-		if hiddenMap[params.UUID] {
-			return nil, rpc.MakeError(rpc.InvalidParams, "UUID is required", params) //防止未登录用户获取隐藏客户端数据
-		}
+	if !isLogin && clients.IsHiddenClient(params.UUID) {
+		return nil, rpc.MakeError(rpc.InvalidParams, "UUID is required", params) //防止未登录用户获取隐藏客户端数据
 	}
 
 	reports := agent_runtime.GetRecentReports(params.UUID)

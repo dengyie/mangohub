@@ -12,15 +12,15 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/database/dbcore"
-	"github.com/dengyie/mangohub/hub/internal/metricstore"
 	appconfig "github.com/dengyie/mangohub/hub/internal/config"
+	"github.com/dengyie/mangohub/hub/internal/metricstore"
 	"github.com/dengyie/mangohub/hub/internal/migrations"
 	"github.com/dengyie/mangohub/hub/pkg/metric"
 	"github.com/dengyie/mangohub/hub/web/api"
 	publicapi "github.com/dengyie/mangohub/hub/web/api/public"
 	jsonrpc "github.com/dengyie/mangohub/hub/web/rpc/jsonrpc"
+	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 

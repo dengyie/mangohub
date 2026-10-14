@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
+	logger "github.com/dengyie/mangohub/hub/utils/log"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	logger "github.com/dengyie/mangohub/hub/utils/log"
 )
 
 const (

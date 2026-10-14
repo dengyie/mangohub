@@ -4,13 +4,13 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/database/clients"
 	v2 "github.com/dengyie/mangohub/hub/protocol/v2"
 	"github.com/dengyie/mangohub/hub/utils"
 	logger "github.com/dengyie/mangohub/hub/utils/log"
 	agent_runtime "github.com/dengyie/mangohub/hub/web/agent"
 	"github.com/dengyie/mangohub/hub/web/api"
+	"github.com/gin-gonic/gin"
 )
 
 func dispatchTerminalRequest(uuid, id string) bool {

@@ -58,12 +58,6 @@ func startSecurityWarning(ctx context.Context) func() {
 	log.Printf("[warn] remote control is enabled; MOTD warning appended")
 	return cleanup
 }
-		log.Printf("[warn] could not maintain MOTD warning: %v", err)
-		return func() {}
-	}
-	log.Printf("[warn] remote control is enabled; MOTD warning appended")
-	return cleanup
-}
 
 func removeInstalledMOTDWarning(path string) error {
 	original, err := readMOTD(path)

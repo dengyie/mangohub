@@ -775,17 +775,17 @@ func TestWriteReportStoresMiningMetricsAndHistory(t *testing.T) {
 		UUID:      "rig-a",
 		UpdatedAt: base,
 		Mining: &v2.MiningReport{
-			Algorithm:    "pearlhash",
-			Pool:         "prl-eu.kryptex.network:7048",
-			Wallet:       "krxXGNKMD4/home-win",
-			Hashrate1Min: 62403052604616.36,
-			PowerW:       149,
-			Temperature:  74,
+			Algorithm:     "pearlhash",
+			Pool:          "prl-eu.kryptex.network:7048",
+			Wallet:        "krxXGNKMD4/home-win",
+			Hashrate1Min:  62403052604616.36,
+			PowerW:        149,
+			Temperature:   74,
 			FanPercent:    86,
-			SharesValid:  64,
+			SharesValid:   64,
 			SharesInvalid: 1,
-			HwErrors:     0,
-			PoolLatency:  232,
+			HwErrors:      0,
+			PoolLatency:   232,
 		},
 	}
 	if _, err := WriteReport(ctx, report); err != nil {
@@ -911,17 +911,17 @@ func TestGetGPURecordsSortedByDeviceAndTime(t *testing.T) {
 		base.Add(2 * time.Minute),
 		base.Add(3 * time.Minute),
 	} {
-			report := v2.Report{
-				UUID:      "gpu-node",
-				UpdatedAt: ts,
-				GPU: &v2.GPUDetailReport{
-					AverageUsage: 15,
-					DetailedInfo: []v2.GPUDeviceInfo{
-						{Utilization: 10, Temperature: 60, MemoryUsed: 1024, MemoryTotal: 8192, Name: "GPU B"},
-						{Utilization: 20, Temperature: 50, MemoryUsed: 2048, MemoryTotal: 8192, Name: "GPU A"},
-					},
+		report := v2.Report{
+			UUID:      "gpu-node",
+			UpdatedAt: ts,
+			GPU: &v2.GPUDetailReport{
+				AverageUsage: 15,
+				DetailedInfo: []v2.GPUDeviceInfo{
+					{Utilization: 10, Temperature: 60, MemoryUsed: 1024, MemoryTotal: 8192, Name: "GPU B"},
+					{Utilization: 20, Temperature: 50, MemoryUsed: 2048, MemoryTotal: 8192, Name: "GPU A"},
 				},
-			}
+			},
+		}
 		if _, err := WriteReport(ctx, report); err != nil {
 			t.Fatalf("write gpu report: %v", err)
 		}

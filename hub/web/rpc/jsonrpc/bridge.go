@@ -5,8 +5,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/pkg/rpc"
+	"github.com/gin-gonic/gin"
 )
 
 // bridge.go

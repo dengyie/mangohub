@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/dengyie/mangohub/hub/internal/metricstore"
 	"github.com/dengyie/mangohub/hub/database/models"
+	"github.com/dengyie/mangohub/hub/internal/metricstore"
 )
 
 // 历史监控数据已完全迁移到 metric store（默认 SQLite ./data/metrics.db，或配置的

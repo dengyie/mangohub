@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/dengyie/mangohub/hub/database/auditlog"
 	"github.com/dengyie/mangohub/hub/database/clients"
 	"github.com/dengyie/mangohub/hub/database/tasks"
@@ -14,6 +13,7 @@ import (
 	v2 "github.com/dengyie/mangohub/hub/protocol/v2"
 	"github.com/dengyie/mangohub/hub/utils"
 	agent_runtime "github.com/dengyie/mangohub/hub/web/agent"
+	"github.com/gorilla/websocket"
 )
 
 // admin.mining.go

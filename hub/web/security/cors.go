@@ -5,8 +5,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/internal/config"
+	"github.com/gin-gonic/gin"
 )
 
 // CorsController 保存 CORS 中间件的可热更新状态。

@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/database/dbcore"
 	"github.com/dengyie/mangohub/hub/database/models"
 	"github.com/dengyie/mangohub/hub/internal/config"
@@ -14,6 +13,7 @@ import (
 	"github.com/dengyie/mangohub/hub/internal/metricstore"
 	logger "github.com/dengyie/mangohub/hub/utils/log"
 	"github.com/dengyie/mangohub/hub/web/public"
+	"github.com/gin-gonic/gin"
 )
 
 func GetPublicInfo() (map[string]interface{}, error) {

@@ -79,17 +79,17 @@ func TestGetRecordsByUUIDAcceptsMiningAndGpuLoadTypes(t *testing.T) {
 	// 样本时间戳必须严格落在过去（API 用 End=now 查询；已过去的分钟边界不会
 	// 被 End 排除）。用当前分钟的上一分钟，且等待跨过该边界。
 	base := time.Now().UTC().Truncate(time.Minute)
-		report := v2.Report{
-			UUID:      "node-mining",
-			UpdatedAt: base.Add(-39 * time.Second),
-			CPU:       v2.CPUReport{Usage: 10},
-			Mining: &v2.MiningReport{
-				Algorithm:    "pearlhash",
-				Pool:         "prl-eu.kryptex.network:7048",
-				Wallet:       "krxXGNKMD4/test",
-				Hashrate1Min: 1e12,
-			},
-		}
+	report := v2.Report{
+		UUID:      "node-mining",
+		UpdatedAt: base.Add(-39 * time.Second),
+		CPU:       v2.CPUReport{Usage: 10},
+		Mining: &v2.MiningReport{
+			Algorithm:    "pearlhash",
+			Pool:         "prl-eu.kryptex.network:7048",
+			Wallet:       "krxXGNKMD4/test",
+			Hashrate1Min: 1e12,
+		},
+	}
 	if _, err := metricstore.WriteReport(ctx, report); err != nil {
 		t.Fatalf("write report: %v", err)
 	}
@@ -183,9 +183,9 @@ func TestMaskWalletAddr(t *testing.T) {
 	cases := []struct{ in, want string }{
 		{"krxXGNKMD4/home-win", "krxX***D4/home-win"},
 		{"0x1234567890abcdef", "0x12***ef"},
-		{"short1", "short1"},     // <=6 原样
-		{"", ""},                 // 空串
-		{"ab/cd", "ab/cd"},       // 地址部分太短
+		{"short1", "short1"}, // <=6 原样
+		{"", ""},             // 空串
+		{"ab/cd", "ab/cd"},   // 地址部分太短
 		{"XEN9999999999", "XEN9***99"},
 	}
 	for _, c := range cases {

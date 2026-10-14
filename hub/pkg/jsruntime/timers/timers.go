@@ -4,9 +4,9 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dengyie/mangohub/hub/pkg/jsruntime/internal/bridge"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/eventloop"
-	"github.com/dengyie/mangohub/hub/pkg/jsruntime/internal/bridge"
 )
 
 type Module struct {

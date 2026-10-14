@@ -35,50 +35,50 @@ var RootCmd = &cobra.Command{
 	Use:   "mango-agent",
 	Short: "mango-agent is the node telemetry and zero-trust management daemon for Mangohub",
 	Long:  `mango-agent gathers high-frequency telemetry (CPU, RAM, disk IO, network, latency, miners) and executes zero-trust management commands.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			// Notification helpers must not load the service's config or credentials.
-			if flags.ShowWarning {
-				ShowToast()
-				return nil
-			}
-			if err := loadConfiguration(cmd); err != nil {
-				return err
-			}
-			if flags.PreferIPVersion != "" && flags.PreferIPVersion != "4" && flags.PreferIPVersion != "6" {
-				return fmt.Errorf("invalid --prefer-ip-version value %q: expected 4 or 6", flags.PreferIPVersion)
-			}
-			// 捕获中止信号，优雅退出
-			stopCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-			defer stop()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// Notification helpers must not load the service's config or credentials.
+		if flags.ShowWarning {
+			ShowToast()
+			return nil
+		}
+		if err := loadConfiguration(cmd); err != nil {
+			return err
+		}
+		if flags.PreferIPVersion != "" && flags.PreferIPVersion != "4" && flags.PreferIPVersion != "6" {
+			return fmt.Errorf("invalid --prefer-ip-version value %q: expected 4 or 6", flags.PreferIPVersion)
+		}
+		// 捕获中止信号，优雅退出
+		stopCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
 
-			stopWarning := startSecurityWarning(stopCtx)
-			defer stopWarning()
-			shutdown := newShutdownCoordinator(stopWarning, netstatic.Stop, os.Exit)
-			go func() {
-				<-stopCtx.Done()
-				log.Printf("shutting down gracefully...")
-				shutdown.shutdown(0)
-			}()
+		stopWarning := startSecurityWarning(stopCtx)
+		defer stopWarning()
+		shutdown := newShutdownCoordinator(stopWarning, netstatic.Stop, os.Exit)
+		go func() {
+			<-stopCtx.Done()
+			log.Printf("shutting down gracefully...")
+			shutdown.shutdown(0)
+		}()
 
-			if flags.MonthRotate != 0 {
-				err := netstatic.StartOrContinue()
-				if err != nil {
-					log.Println("Failed to start netstatic monitoring:", err)
-				}
-				nics, err := monitoring.InterfaceList()
-				if err != nil {
-					log.Println("Failed to get interface list for netstatic:", err)
-				}
-				err = netstatic.SetNewConfig(netstatic.NetStaticConfig{
-					Nics: nics,
-				})
-				if err != nil {
-					log.Println("Failed to set netstatic config:", err)
-				}
+		if flags.MonthRotate != 0 {
+			err := netstatic.StartOrContinue()
+			if err != nil {
+				log.Println("Failed to start netstatic monitoring:", err)
 			}
+			nics, err := monitoring.InterfaceList()
+			if err != nil {
+				log.Println("Failed to get interface list for netstatic:", err)
+			}
+			err = netstatic.SetNewConfig(netstatic.NetStaticConfig{
+				Nics: nics,
+			})
+			if err != nil {
+				log.Println("Failed to set netstatic config:", err)
+			}
+		}
 
-			log.Println("Mangohub Agent", update.CurrentVersion)
-			log.Println("Github Repo:", update.Repo)
+		log.Println("Mangohub Agent", update.CurrentVersion)
+		log.Println("Github Repo:", update.Repo)
 		if flags.PreferCgroupLimits {
 			log.Println("Prefer cgroup limits: memory/CPU quotas over host /proc when finite")
 			if runtime.GOOS == "linux" {

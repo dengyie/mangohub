@@ -3,8 +3,8 @@ package terminal
 import (
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/web/api"
+	"github.com/gin-gonic/gin"
 )
 
 func EstablishConnection(c *gin.Context) {

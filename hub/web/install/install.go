@@ -13,7 +13,6 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/database/accounts"
 	"github.com/dengyie/mangohub/hub/database/models"
 	appconfig "github.com/dengyie/mangohub/hub/internal/config"
@@ -22,6 +21,7 @@ import (
 	"github.com/dengyie/mangohub/hub/web/api"
 	"github.com/dengyie/mangohub/hub/web/backup"
 	"github.com/dengyie/mangohub/hub/web/upload"
+	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 

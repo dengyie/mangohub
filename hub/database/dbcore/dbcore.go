@@ -269,19 +269,19 @@ func backupOnVersionUpgrade() {
 	}
 	tsName := time.Now().UTC().Format("20060102-150405.000")
 	bakPath := filepath.Join(backupDir, fmt.Sprintf("upgrade-%s.zip", tsName))
-		// 打包 ./data（排除 backup 归档目录本身、主题目录 theme/theme-releases 与 theme-backup：
-		// 主题历史与热更产物独立存在不受升级影响，重复打包会导致每个 zip 膨胀数百兆并触发链接读取错误）。
-		backupZipPath := filepath.Join(".", "data", "backup.zip")
-		themeBackupDir := filepath.Join(".", "data", "theme-backup")
-		themeDir := filepath.Join(".", "data", "theme")
-		themeReleasesDir := filepath.Join(".", "data", "theme-releases")
-		if zipErr := zipDirectoryExcluding("./data", bakPath, map[string]struct{}{
-			backupZipPath:    {},
-			backupDir:        {},
-			themeBackupDir:   {},
-			themeDir:         {},
-			themeReleasesDir: {},
-		}); zipErr != nil {
+	// 打包 ./data（排除 backup 归档目录本身、主题目录 theme/theme-releases 与 theme-backup：
+	// 主题历史与热更产物独立存在不受升级影响，重复打包会导致每个 zip 膨胀数百兆并触发链接读取错误）。
+	backupZipPath := filepath.Join(".", "data", "backup.zip")
+	themeBackupDir := filepath.Join(".", "data", "theme-backup")
+	themeDir := filepath.Join(".", "data", "theme")
+	themeReleasesDir := filepath.Join(".", "data", "theme-releases")
+	if zipErr := zipDirectoryExcluding("./data", bakPath, map[string]struct{}{
+		backupZipPath:    {},
+		backupDir:        {},
+		themeBackupDir:   {},
+		themeDir:         {},
+		themeReleasesDir: {},
+	}); zipErr != nil {
 		logger.Errorf("dbcore", "[upgrade-backup] failed to backup ./data before upgrade (from %q to %q): %v", prevVersion, versionID, zipErr)
 		return
 	}
@@ -456,22 +456,22 @@ func doInitialize() error {
 			} else {
 				logger.Infof("dbcore", "[restore] backup.zip removed")
 			}
-				// 8. 删除标记
-				_ = os.Remove("./data/mangohub-backup-markup")
-				_ = os.Remove("./data/komari-backup-markup")
+			// 8. 删除标记
+			_ = os.Remove("./data/mangohub-backup-markup")
+			_ = os.Remove("./data/komari-backup-markup")
 		}
 	}()
 
-		// 统一解析并回填实际使用的 SQLite 数据库文件路径（自动发现并平滑接管存量 ./data/komari.db）
-		actualDBFile := resolveDatabaseFile()
-		flags.DatabaseFile = actualDBFile
+	// 统一解析并回填实际使用的 SQLite 数据库文件路径（自动发现并平滑接管存量 ./data/komari.db）
+	actualDBFile := resolveDatabaseFile()
+	flags.DatabaseFile = actualDBFile
 
-		// 记录“打开数据库之前”数据库是否已存在，用于区分全新安装与旧版升级。
-		// 必须在（可能的）恢复逻辑之后、gorm.Open 之前采集：恢复会解压出旧库，
-		// gorm.Open 会创建空库。
-		if _, statErr := os.Stat(actualDBFile); statErr == nil {
-			dbFileExistedAtStartup = true
-		}
+	// 记录“打开数据库之前”数据库是否已存在，用于区分全新安装与旧版升级。
+	// 必须在（可能的）恢复逻辑之后、gorm.Open 之前采集：恢复会解压出旧库，
+	// gorm.Open 会创建空库。
+	if _, statErr := os.Stat(actualDBFile); statErr == nil {
+		dbFileExistedAtStartup = true
+	}
 
 	logConfig := &gorm.Config{
 		Logger:  logger.NewGormLogger(),
@@ -526,22 +526,22 @@ func doInitialize() error {
 	// metric store 的读写 DTO 和旧表导入 DTO 保留在 models 包中。
 	// models.TrafficReportNotification 同样仅为旧数据库兼容保留，不再建表。
 
-		err = instance.AutoMigrate(
-			&models.User{},
-			&models.Client{},
-			&models.Log{},
-			&models.Clipboard{},
-			&models.LoadNotification{},
-			&models.OfflineNotification{},
-			&models.PingTask{},
-			&models.OidcProvider{},
-			&models.MessageSenderProvider{},
-			&models.ThemeConfiguration{},
-			&models.PluginConfiguration{},
-			&models.MiningEarningsSnapshot{},
-			&models.SSHKey{},
-			&models.SSHTicket{},
-		)
+	err = instance.AutoMigrate(
+		&models.User{},
+		&models.Client{},
+		&models.Log{},
+		&models.Clipboard{},
+		&models.LoadNotification{},
+		&models.OfflineNotification{},
+		&models.PingTask{},
+		&models.OidcProvider{},
+		&models.MessageSenderProvider{},
+		&models.ThemeConfiguration{},
+		&models.PluginConfiguration{},
+		&models.MiningEarningsSnapshot{},
+		&models.SSHKey{},
+		&models.SSHTicket{},
+	)
 	if err != nil {
 		return fmt.Errorf("failed to create tables: %w", err)
 	}

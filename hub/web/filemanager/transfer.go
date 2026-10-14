@@ -15,11 +15,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/dengyie/mangohub/hub/database/auditlog"
 	logger "github.com/dengyie/mangohub/hub/utils/log"
 	"github.com/dengyie/mangohub/hub/web/api"
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 const (
@@ -730,10 +730,10 @@ func PreviewDownload(c *gin.Context) {
 	// Keep the public URL and response filename ASCII-only. This avoids a
 	// compatibility issue in Office Online's fetcher while the token still
 	// binds the request to the original (possibly non-ASCII) path.
-		filename := strings.TrimSpace(c.Query("filename"))
-		if filename == "" {
-			filename = "mangohub-preview"
-		}
+	filename := strings.TrimSpace(c.Query("filename"))
+	if filename == "" {
+		filename = "mangohub-preview"
+	}
 	downloadFile(c, clientUUID, item.Path, downloadResponseOptions{
 		Filename:         filename,
 		OfficeCompatible: true,

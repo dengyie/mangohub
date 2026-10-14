@@ -13,10 +13,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/internal/config"
 	"github.com/dengyie/mangohub/hub/internal/plugin"
 	"github.com/dengyie/mangohub/hub/web/api"
+	"github.com/gin-gonic/gin"
 )
 
 // Plugin market mirrors the theme market: admin-managed catalog sources that

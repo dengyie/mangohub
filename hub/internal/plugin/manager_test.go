@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/database/models"
 	"github.com/dengyie/mangohub/hub/pkg/rpc"
+	"github.com/gin-gonic/gin"
 )
 
 const demoManifest = `{"name":"Demo","short":"demo","version":"1.0.0","komari":">=0.0.1","permissions":{"node":true,"timeout":5,"allowRoutes":true,"allowSystemRPC":true}}`

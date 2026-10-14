@@ -9,8 +9,8 @@ package jsruntime
 import (
 	"time"
 
-	"github.com/dop251/goja"
 	"github.com/dengyie/mangohub/hub/pkg/jsruntime/internal/bridge"
+	"github.com/dop251/goja"
 )
 
 // Host is the host-facing service boundary of a Runtime. It deliberately

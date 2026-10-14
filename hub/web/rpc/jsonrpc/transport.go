@@ -8,11 +8,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/database/accounts"
 	"github.com/dengyie/mangohub/hub/internal/config"
 	"github.com/dengyie/mangohub/hub/pkg/rpc"
 	"github.com/dengyie/mangohub/hub/web/api"
+	"github.com/gin-gonic/gin"
 )
 
 // OnRpcRequest 是 /api/rpc2 的统一入口：GET 升级为 WebSocket，POST 处理单条/批量 JSON-RPC。

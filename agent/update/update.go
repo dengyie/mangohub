@@ -195,8 +195,8 @@ func listGitHubReleases(owner, repo string) ([]githubRelease, error) {
 			return nil, fmt.Errorf("failed to create GitHub releases request: %w", err)
 		}
 
-			req.Header.Set("Accept", "application/vnd.github+json")
-			req.Header.Set("User-Agent", "mangohub-agent")
+		req.Header.Set("Accept", "application/vnd.github+json")
+		req.Header.Set("User-Agent", "mangohub-agent")
 		if token := os.Getenv("GITHUB_TOKEN"); token != "" {
 			req.Header.Set("Authorization", "Bearer "+token)
 		}

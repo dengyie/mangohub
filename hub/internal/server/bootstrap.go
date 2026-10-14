@@ -6,11 +6,11 @@ import (
 	"log"
 	"os"
 
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/database/dbcore"
 	"github.com/dengyie/mangohub/hub/database/ssh"
 	"github.com/dengyie/mangohub/hub/internal/config"
 	"github.com/dengyie/mangohub/hub/utils"
+	"github.com/gin-gonic/gin"
 )
 
 // Bootstrap initializes the data directory, primary database, and settings.

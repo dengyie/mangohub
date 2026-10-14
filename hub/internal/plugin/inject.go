@@ -119,8 +119,9 @@ func (w *htmlInjectWriter) WriteHeader(code int) {
 		w.wroteHeader = true
 	}
 	ct := w.header.Get("Content-Type")
+	ce := w.header.Get("Content-Encoding")
 	w.mu.Unlock()
-	if ct != "" && !isHTMLContentType(ct) {
+	if ce != "" || (ct != "" && !isHTMLContentType(ct)) {
 		w.passthrough()
 	}
 }
@@ -192,13 +193,14 @@ func (w *htmlInjectWriter) flushTo(fragments []*injectEntry) {
 	w.mu.Unlock()
 
 	ct := header.Get("Content-Type")
-	if ct == "" {
+	ce := header.Get("Content-Encoding")
+	if ce == "" && ct == "" {
 		ct = http.DetectContentType(body)
 		if isHTMLContentType(ct) {
 			header.Set("Content-Type", ct)
 		}
 	}
-	if isHTMLContentType(ct) {
+	if ce == "" && isHTMLContentType(ct) {
 		body = injectHTMLContent(body, fragments)
 		header.Del("Content-Length")
 	}

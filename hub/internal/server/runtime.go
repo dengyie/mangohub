@@ -10,7 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/database"
 	"github.com/dengyie/mangohub/hub/database/accounts"
 	"github.com/dengyie/mangohub/hub/database/auditlog"
@@ -31,6 +30,7 @@ import (
 	recoveryweb "github.com/dengyie/mangohub/hub/web/recovery"
 	"github.com/dengyie/mangohub/hub/web/router"
 	"github.com/dengyie/mangohub/hub/web/security"
+	"github.com/gin-gonic/gin"
 )
 
 // ErrRestartRequested is returned after a clean shutdown when a configuration

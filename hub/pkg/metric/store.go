@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dengyie/mangohub/hub/internal/sqlitetune"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/dengyie/mangohub/hub/internal/sqlitetune"
 )
 
 // Store is the main metric storage handle.
@@ -391,11 +391,11 @@ func (s *Store) Close() error {
 	s.rawMu.Unlock()
 	// Coarse summaries deliberately remain process-local until their window is
 	// sealed. The configured behavior drops an unsealed parent on shutdown.
-		s.coarseMu.Lock()
-		s.coarse = nil
-		s.coarseMu.Unlock()
-		s.invalidateDefCache()
-		if s.ownedReadDB && s.readDB != nil {
+	s.coarseMu.Lock()
+	s.coarse = nil
+	s.coarseMu.Unlock()
+	s.invalidateDefCache()
+	if s.ownedReadDB && s.readDB != nil {
 		if err := s.readDB.Close(); err != nil {
 			firstErr = err
 		}
@@ -485,60 +485,60 @@ func (s *Store) CreateMetric(ctx context.Context, def Definition) error {
 		now,
 		now,
 	)
-		if err != nil && isUniqueViolation(err) {
-			return fmt.Errorf("%w: metric %q", ErrAlreadyExists, def.Name)
-		}
-		if err == nil {
-			s.invalidateDefCache()
-		}
+	if err != nil && isUniqueViolation(err) {
+		return fmt.Errorf("%w: metric %q", ErrAlreadyExists, def.Name)
+	}
+	if err == nil {
+		s.invalidateDefCache()
+	}
+	return err
+}
+
+// UpsertMetric inserts a metric definition or, if one with the same name already
+// exists, updates its mutable fields (type, unit, description, retention,
+// metadata). Use this when you intentionally want create-or-replace semantics;
+// use CreateMetric when a duplicate name should be an error.
+//
+// UpsertMetric 插入指标定义；如果已存在同名定义，则更新其可变字段
+// （type、unit、description、retention、metadata）。当你明确需要“创建或替换”
+// 语义时使用它；当重复名称应视为错误时使用 CreateMetric。
+func (s *Store) UpsertMetric(ctx context.Context, def Definition) error {
+	if err := s.ensureOpen(); err != nil {
 		return err
 	}
-
-	// UpsertMetric inserts a metric definition or, if one with the same name already
-	// exists, updates its mutable fields (type, unit, description, retention,
-	// metadata). Use this when you intentionally want create-or-replace semantics;
-	// use CreateMetric when a duplicate name should be an error.
-	//
-	// UpsertMetric 插入指标定义；如果已存在同名定义，则更新其可变字段
-	// （type、unit、description、retention、metadata）。当你明确需要“创建或替换”
-	// 语义时使用它；当重复名称应视为错误时使用 CreateMetric。
-	func (s *Store) UpsertMetric(ctx context.Context, def Definition) error {
-		if err := s.ensureOpen(); err != nil {
-			return err
-		}
-		def = def.withDefaults()
-		if err := def.Validate(); err != nil {
-			return err
-		}
-		if def.RetentionDays == 0 {
-			// Serialize the zero-retention transition with writes and compaction before
-			// changing the definition or removing data left by an enabled definition.
-			s.retentionMu.Lock()
-			defer s.retentionMu.Unlock()
-		}
-		metadata, err := encodeMap(def.Metadata)
-		if err != nil {
-			return err
-		}
-		now := timeMillis(time.Now())
-		_, err = s.db.ExecContext(
-			ctx,
-			s.dialect.insertDefinitionSQL(s.tables),
-			def.Name,
-			string(def.Type),
-			def.Unit,
-			def.Description,
-			def.RetentionDays,
-			metadata,
-			now,
-			now,
-		)
-		if err == nil {
-			s.invalidateDefCache()
-		}
-		if err != nil || def.RetentionDays != 0 {
-			return err
-		}
+	def = def.withDefaults()
+	if err := def.Validate(); err != nil {
+		return err
+	}
+	if def.RetentionDays == 0 {
+		// Serialize the zero-retention transition with writes and compaction before
+		// changing the definition or removing data left by an enabled definition.
+		s.retentionMu.Lock()
+		defer s.retentionMu.Unlock()
+	}
+	metadata, err := encodeMap(def.Metadata)
+	if err != nil {
+		return err
+	}
+	now := timeMillis(time.Now())
+	_, err = s.db.ExecContext(
+		ctx,
+		s.dialect.insertDefinitionSQL(s.tables),
+		def.Name,
+		string(def.Type),
+		def.Unit,
+		def.Description,
+		def.RetentionDays,
+		metadata,
+		now,
+		now,
+	)
+	if err == nil {
+		s.invalidateDefCache()
+	}
+	if err != nil || def.RetentionDays != 0 {
+		return err
+	}
 	_, err = s.deleteSeries(ctx, Query{MetricName: def.Name})
 	return err
 }
@@ -667,11 +667,11 @@ func (s *Store) DeleteMetric(ctx context.Context, name string) error {
 	if _, err = tx.ExecContext(ctx, fmt.Sprintf(`DELETE FROM %s WHERE name = %s`, s.tables.definitions, s.dialect.placeholder(1)), name); err != nil {
 		return err
 	}
-		if err := tx.Commit(); err != nil {
-			return err
-		}
-		s.invalidateDefCache()
-		_, rawErr := s.deleteRawPoints(name, "", nil)
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	s.invalidateDefCache()
+	_, rawErr := s.deleteRawPoints(name, "", nil)
 	_, hotErr := s.deleteHotRollups(name, "", nil, nil)
 	_, coarseErr := s.deleteCoarseRollupsMatching(name, "", nil)
 	return errors.Join(rawErr, hotErr, coarseErr)
@@ -717,11 +717,11 @@ func (s *Store) UpdateMetricRetention(ctx context.Context, name string, retentio
 	if affected == 0 {
 		return Definition{}, fmt.Errorf("%w: metric %q", ErrNotFound, name)
 	}
-		if err := tx.Commit(); err != nil {
-			return Definition{}, err
-		}
-		s.invalidateDefCache()
-		return s.GetMetric(ctx, name)
+	if err := tx.Commit(); err != nil {
+		return Definition{}, err
+	}
+	s.invalidateDefCache()
+	return s.GetMetric(ctx, name)
 }
 
 // SetMetricRetention updates one metric's retention policy. A value of zero
@@ -769,11 +769,11 @@ func (s *Store) SetMetricRetention(ctx context.Context, name string, retentionDa
 			return Definition{}, err
 		}
 	}
-		if err := tx.Commit(); err != nil {
-			return Definition{}, err
-		}
-		s.invalidateDefCache()
-		if retentionDays == 0 {
+	if err := tx.Commit(); err != nil {
+		return Definition{}, err
+	}
+	s.invalidateDefCache()
+	if retentionDays == 0 {
 		_, rawErr := s.deleteRawPoints(name, "", nil)
 		_, hotErr := s.deleteHotRollups(name, "", nil, nil)
 		_, coarseErr := s.deleteCoarseRollupsMatching(name, "", nil)

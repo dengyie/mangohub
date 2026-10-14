@@ -6,11 +6,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/database/accounts"
 	"github.com/dengyie/mangohub/hub/database/auditlog"
 	"github.com/dengyie/mangohub/hub/utils/geoip"
 	"github.com/dengyie/mangohub/hub/web/api"
+	"github.com/gin-gonic/gin"
 )
 
 // update.go

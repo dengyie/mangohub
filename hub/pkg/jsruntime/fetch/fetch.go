@@ -15,9 +15,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dop251/goja"
 	"github.com/dengyie/mangohub/hub/pkg/jsruntime/httpbody"
 	"github.com/dengyie/mangohub/hub/pkg/jsruntime/internal/bridge"
+	"github.com/dop251/goja"
 )
 
 type abortSignalState struct {

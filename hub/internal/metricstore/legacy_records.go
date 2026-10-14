@@ -327,20 +327,20 @@ func GetGPURecordsByClientAndTime(ctx context.Context, clientUUID string, start,
 
 // MiningRecord 挖矿指标的历史点（tags: rig/algorithm/pool 随每次点带回）。
 type MiningRecord struct {
-	Client      string    `json:"client"`
-	Time        time.Time `json:"time"`
-	Rig         string    `json:"rig"`
-	Algorithm   string    `json:"algorithm"`
-	Pool        string    `json:"pool"`
-	Hashrate    float64   `json:"hashrate"`
-	Power       float64   `json:"power"`
-	Temperature float64   `json:"temperature"`
-	Fan         float64   `json:"fan"`
-	SharesValid int64     `json:"shares_valid"`
-	SharesStale int64     `json:"shares_stale"`
-	SharesInvalid int64    `json:"shares_invalid"`
-	HwErrors    int64     `json:"hw_errors"`
-	PoolLatency int64     `json:"pool_latency"`
+	Client        string    `json:"client"`
+	Time          time.Time `json:"time"`
+	Rig           string    `json:"rig"`
+	Algorithm     string    `json:"algorithm"`
+	Pool          string    `json:"pool"`
+	Hashrate      float64   `json:"hashrate"`
+	Power         float64   `json:"power"`
+	Temperature   float64   `json:"temperature"`
+	Fan           float64   `json:"fan"`
+	SharesValid   int64     `json:"shares_valid"`
+	SharesStale   int64     `json:"shares_stale"`
+	SharesInvalid int64     `json:"shares_invalid"`
+	HwErrors      int64     `json:"hw_errors"`
+	PoolLatency   int64     `json:"pool_latency"`
 }
 
 // GetMiningRecordsByClientAndTime 从 metric store 查询挖矿记录。与负载记录相同

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/dop251/goja"
 	"github.com/dengyie/mangohub/hub/internal/scheduler"
+	"github.com/dop251/goja"
 )
 
 // cronJobSeq gives every registered cron job a process-unique id. Job names

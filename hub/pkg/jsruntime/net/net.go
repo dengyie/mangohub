@@ -12,11 +12,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/dop251/goja"
-	"github.com/dop251/goja_nodejs/buffer"
 	"github.com/dengyie/mangohub/hub/pkg/jsruntime/events"
 	"github.com/dengyie/mangohub/hub/pkg/jsruntime/internal/bridge"
 	"github.com/dengyie/mangohub/hub/pkg/jsruntime/internal/writequeue"
+	"github.com/dop251/goja"
+	"github.com/dop251/goja_nodejs/buffer"
 )
 
 type Module struct {

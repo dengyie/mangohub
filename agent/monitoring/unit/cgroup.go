@@ -326,13 +326,13 @@ func ReadCgroupCPU(sampleWindow time.Duration) CgroupCPU {
 	if elapsed <= 0 || cores <= 0 {
 		return out
 	}
-		deltaSec := float64(u2-u1) / 1e6
-		usage := (deltaSec / (elapsed * cores)) * 100
-		if usage > 100.0 {
-			usage = 100.0
-		} else if usage < 0.0 {
-			usage = 0.0
-		}
-		out.UsagePercent = usage
-		return out
+	deltaSec := float64(u2-u1) / 1e6
+	usage := (deltaSec / (elapsed * cores)) * 100
+	if usage > 100.0 {
+		usage = 100.0
+	} else if usage < 0.0 {
+		usage = 0.0
+	}
+	out.UsagePercent = usage
+	return out
 }

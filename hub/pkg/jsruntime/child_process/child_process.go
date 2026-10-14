@@ -14,13 +14,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dop251/goja"
-	"github.com/dop251/goja_nodejs/buffer"
-	"github.com/dop251/goja_nodejs/require"
 	"github.com/dengyie/mangohub/hub/pkg/jsruntime/events"
 	"github.com/dengyie/mangohub/hub/pkg/jsruntime/fs"
 	"github.com/dengyie/mangohub/hub/pkg/jsruntime/internal/bridge"
 	"github.com/dengyie/mangohub/hub/pkg/jsruntime/internal/writequeue"
+	"github.com/dop251/goja"
+	"github.com/dop251/goja_nodejs/buffer"
+	"github.com/dop251/goja_nodejs/require"
 )
 
 type childCommandOptions struct {

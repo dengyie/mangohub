@@ -6,9 +6,9 @@ package api
 // 三处的重复逻辑。识别优先级:API Key > Session(用户) > Client Token(agent) > 匿名。
 
 import (
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/database/accounts"
 	"github.com/dengyie/mangohub/hub/pkg/rpc"
+	"github.com/gin-gonic/gin"
 )
 
 // principalContextKey 是 principal 在 gin.Context 中的存储键。

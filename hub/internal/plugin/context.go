@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/dengyie/mangohub/hub/pkg/rpc"
 	"github.com/dop251/goja"
 	"github.com/gin-gonic/gin"
-	"github.com/dengyie/mangohub/hub/pkg/rpc"
 )
 
 // principalContextKey stays in sync with web/api/principal.go:

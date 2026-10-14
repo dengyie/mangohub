@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/database/accounts"
 	"github.com/dengyie/mangohub/hub/database/auditlog"
 	"github.com/dengyie/mangohub/hub/internal/config"
 	"github.com/dengyie/mangohub/hub/utils"
 	"github.com/dengyie/mangohub/hub/web/oauth"
+	"github.com/gin-gonic/gin"
 )
 
 // /api/oauth

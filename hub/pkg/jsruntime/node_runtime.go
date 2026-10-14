@@ -5,11 +5,11 @@ import (
 	stdos "os"
 	"path/filepath"
 
-	"github.com/dop251/goja_nodejs/buffer"
-	"github.com/dop251/goja_nodejs/require"
 	"github.com/dengyie/mangohub/hub/pkg/jsruntime/events"
 	osmodule "github.com/dengyie/mangohub/hub/pkg/jsruntime/os"
 	streammodule "github.com/dengyie/mangohub/hub/pkg/jsruntime/stream"
+	"github.com/dop251/goja_nodejs/buffer"
+	"github.com/dop251/goja_nodejs/require"
 )
 
 type nodeFileHandle struct {

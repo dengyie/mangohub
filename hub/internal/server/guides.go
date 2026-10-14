@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/dengyie/mangohub/hub/database/dbcore"
-	"github.com/dengyie/mangohub/hub/internal/metricstore"
 	"github.com/dengyie/mangohub/hub/database/models"
+	"github.com/dengyie/mangohub/hub/internal/metricstore"
 	"github.com/dengyie/mangohub/hub/internal/migrations"
 	installweb "github.com/dengyie/mangohub/hub/web/install"
 	migrationweb "github.com/dengyie/mangohub/hub/web/migration"

@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 	"github.com/dengyie/mangohub/hub/database/auditlog"
 	"github.com/dengyie/mangohub/hub/web/connection"
+	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
 
 func ForwardTerminal(id string, browser, agent *connection.SafeConn) {

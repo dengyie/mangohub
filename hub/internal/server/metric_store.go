@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/dengyie/mangohub/hub/database/auditlog"
-	"github.com/dengyie/mangohub/hub/internal/metricstore"
 	"github.com/dengyie/mangohub/hub/internal/config"
+	"github.com/dengyie/mangohub/hub/internal/metricstore"
 	logger "github.com/dengyie/mangohub/hub/utils/log"
 )
 

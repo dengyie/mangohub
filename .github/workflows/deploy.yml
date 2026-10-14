@@ -1,0 +1,129 @@
+name: Mangohub CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  agent-check:
+    name: Agent Lint & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: agent/go.sum
+
+      - name: Run go vet on Agent
+        run: |
+          cd agent
+          go vet ./...
+
+      - name: Build Agent
+        run: |
+          cd agent
+          CGO_ENABLED=0 go build -trimpath -o ../bin/mangohub-agent .
+
+      - name: Run Agent Tests
+        run: |
+          cd agent
+          go test -v $(go list ./... | grep -v '/server')
+
+  hub-check:
+    name: Hub Lint & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache-dependency-path: hub/go.sum
+
+      - name: Run go vet on Hub
+        run: |
+          cd hub
+          go vet ./...
+
+      - name: Build Hub
+        run: |
+          cd hub
+          CGO_ENABLED=1 go build -trimpath -o ../bin/mangohub .
+
+      - name: Run Hub Tests
+        run: |
+          cd hub
+          go test -v ./...
+
+  deploy-vps:
+    name: Deploy to Azure HK VPS
+    needs: [agent-check, hub-check]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.HK_HOST }}
+          port: ${{ secrets.HK_PORT }}
+          username: ${{ secrets.HK_USER }}
+          key: ${{ secrets.HK_SSH_KEY }}
+          script_stop: true
+          script: |
+            echo "=== [1/6] Syncing code on VPS ==="
+            cd /home/mango/mangohub
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "=== [2/6] Compiling binary in container ==="
+            mkdir -p /home/mango/mangohub/bin
+            docker run --rm \
+              -v /home/mango/mangohub:/src \
+              -w /src/hub \
+              -e CGO_ENABLED=1 \
+              golang:alpine \
+              sh -c "apk add --no-cache gcc musl-dev && go build -ldflags '-s -w -linkmode external -extldflags \"-static\"' -trimpath -o /src/bin/mangohub ."
+
+            echo "=== [3/6] Building production docker image ==="
+            docker build -t mangohub:latest -f Dockerfile .
+
+            echo "=== [4/6] Rolling update container ==="
+            docker stop komari || true
+            docker rm komari || true
+            docker run -d \
+              --name komari \
+              --restart unless-stopped \
+              -p 127.0.0.1:25774:25774 \
+              -v /home/mango/komari/data:/app/data \
+              --env-file /home/mango/komari/vault.env \
+              mangohub:latest
+
+            echo "=== [5/6] Self-health check ==="
+            healthy=false
+            for i in $(seq 1 30); do
+              sleep 1
+              code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:25774/api/public || true)
+              if [ "$code" = "200" ]; then
+                echo "Container is healthy (HTTP 200) after ${i}s"
+                healthy=true
+                break
+              fi
+              echo "Waiting for service to start ($i/30)... HTTP code: $code"
+            done
+
+            if [ "$healthy" != "true" ]; then
+              echo "Health check failed! Showing container logs:"
+              docker logs --tail 50 komari
+              exit 1
+            fi
+
+            echo "=== [6/6] Deployment completed successfully! ==="

@@ -1,11 +1,11 @@
 package client
 
 import (
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/database/clients"
 	"github.com/dengyie/mangohub/hub/internal/config"
 	"github.com/dengyie/mangohub/hub/utils"
 	"github.com/dengyie/mangohub/hub/web/api"
+	"github.com/gin-gonic/gin"
 )
 
 func RegisterClient(c *gin.Context) {

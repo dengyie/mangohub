@@ -10,8 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 	"github.com/dengyie/mangohub/hub/database/clients"
 	"github.com/dengyie/mangohub/hub/database/tasks"
 	v2 "github.com/dengyie/mangohub/hub/protocol/v2"
@@ -20,6 +18,8 @@ import (
 	"github.com/dengyie/mangohub/hub/web/api"
 	"github.com/dengyie/mangohub/hub/web/connection"
 	"github.com/dengyie/mangohub/hub/web/filemanager"
+	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
 
 func readMaybeCompressedBody(r *http.Request) ([]byte, error) {

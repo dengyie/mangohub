@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/google/uuid"
 	"github.com/dengyie/mangohub/hub/web/backup"
+	"github.com/google/uuid"
 )
 
 const ChunkSize int64 = 5 * 1024 * 1024

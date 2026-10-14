@@ -11,11 +11,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	logger "github.com/dengyie/mangohub/hub/utils/log"
 	"github.com/dengyie/mangohub/hub/web/api"
 	frontendpublic "github.com/dengyie/mangohub/hub/web/public"
 	"github.com/dengyie/mangohub/hub/web/security"
+	"github.com/gin-gonic/gin"
 )
 
 type guideController interface {

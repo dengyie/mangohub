@@ -12,11 +12,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dengyie/mangohub/hub/pkg/jsruntime/internal/bridge"
+	"github.com/dengyie/mangohub/hub/pkg/jsruntime/internal/filepathutil"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/buffer"
 	"github.com/dop251/goja_nodejs/require"
-	"github.com/dengyie/mangohub/hub/pkg/jsruntime/internal/bridge"
-	"github.com/dengyie/mangohub/hub/pkg/jsruntime/internal/filepathutil"
 )
 
 type nodeFileHandle struct {

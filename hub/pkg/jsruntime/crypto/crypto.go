@@ -36,9 +36,9 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/dengyie/mangohub/hub/pkg/jsruntime/internal/bridge"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/buffer"
-	"github.com/dengyie/mangohub/hub/pkg/jsruntime/internal/bridge"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/crypto/blake2s"
 	"golang.org/x/crypto/chacha20poly1305"

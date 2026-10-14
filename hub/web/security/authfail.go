@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	logger "github.com/dengyie/mangohub/hub/utils/log"
+	"github.com/gin-gonic/gin"
 )
 
 // Auth-failure rate limiting defaults. Tuned well above any legitimate

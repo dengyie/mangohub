@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/dengyie/mangohub/hub/database/dbcore"
 	"github.com/dengyie/mangohub/hub/database/models"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 

@@ -22,11 +22,11 @@ func (ConfigItem) TableName() string {
 }
 
 var (
-	db            *gorm.DB
-	cacheMu       sync.RWMutex
-	cacheMap      map[string]string // key -> json string
-	cacheWarm     bool
-	SetDb         = func(gdb *gorm.DB) {
+	db        *gorm.DB
+	cacheMu   sync.RWMutex
+	cacheMap  map[string]string // key -> json string
+	cacheWarm bool
+	SetDb     = func(gdb *gorm.DB) {
 		db = gdb
 		if err := db.AutoMigrate(&ConfigItem{}); err != nil {
 			panic("failed to migrate config item table: " + err.Error())
@@ -344,29 +344,29 @@ func GetManyAs[T any]() (*T, error) {
 				logger.Warn("config", "marshal default value failed", "key", fi.key, "error", err)
 				continue
 			}
-				toInsert = append(toInsert, ConfigItem{
-					Key:   fi.key,
-					Value: string(jsonBytes),
-				})
-				defaultsToCache[fi.key] = string(jsonBytes)
-			}
-			// 没有 default tag 且数据库中不存在，保持零值，不写入数据库
+			toInsert = append(toInsert, ConfigItem{
+				Key:   fi.key,
+				Value: string(jsonBytes),
+			})
+			defaultsToCache[fi.key] = string(jsonBytes)
 		}
-
-		// 批量写入默认值到数据库与缓存
-		if len(toInsert) > 0 {
-			if err := db.Clauses(clause.OnConflict{
-				Columns:   []clause.Column{{Name: "key"}},
-				DoUpdates: clause.AssignmentColumns([]string{"value"}),
-			}).Create(&toInsert).Error; err != nil {
-				logger.Warn("config", "batch insert default config failed", "error", err)
-			} else {
-				setCacheValues(defaultsToCache)
-			}
-		}
-
-		return &t, nil
+		// 没有 default tag 且数据库中不存在，保持零值，不写入数据库
 	}
+
+	// 批量写入默认值到数据库与缓存
+	if len(toInsert) > 0 {
+		if err := db.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "key"}},
+			DoUpdates: clause.AssignmentColumns([]string{"value"}),
+		}).Create(&toInsert).Error; err != nil {
+			logger.Warn("config", "batch insert default config failed", "error", err)
+		} else {
+			setCacheValues(defaultsToCache)
+		}
+	}
+
+	return &t, nil
+}
 
 // unmarshalToField 将 JSON 字符串反序列化到字段，支持数值类型转换
 func unmarshalToField(jsonStr string, fieldVal reflect.Value) error {

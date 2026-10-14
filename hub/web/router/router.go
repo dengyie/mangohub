@@ -1,7 +1,6 @@
 package router
 
 import (
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/web/api"
 	"github.com/dengyie/mangohub/hub/web/api/admin"
 	"github.com/dengyie/mangohub/hub/web/api/client"
@@ -10,6 +9,7 @@ import (
 	"github.com/dengyie/mangohub/hub/web/filemanager"
 	"github.com/dengyie/mangohub/hub/web/public"
 	jsonRpc "github.com/dengyie/mangohub/hub/web/rpc/jsonrpc"
+	"github.com/gin-gonic/gin"
 )
 
 // Register binds all HTTP, WebSocket, JSON-RPC and static frontend routes.

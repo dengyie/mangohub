@@ -5,8 +5,8 @@ import (
 
 	"github.com/dengyie/mangohub/hub/database/auditlog"
 	"github.com/dengyie/mangohub/hub/database/clients"
-	"github.com/dengyie/mangohub/hub/internal/metricstore"
 	"github.com/dengyie/mangohub/hub/database/records"
+	"github.com/dengyie/mangohub/hub/internal/metricstore"
 	"github.com/dengyie/mangohub/hub/pkg/rpc"
 	agent_runtime "github.com/dengyie/mangohub/hub/web/agent"
 )

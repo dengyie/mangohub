@@ -14,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/dengyie/mangohub/agent/dnsresolver"
 	"github.com/dengyie/mangohub/agent/monitoring"
 	v2 "github.com/dengyie/mangohub/agent/protocol/v2"
@@ -22,6 +21,7 @@ import (
 	"github.com/dengyie/mangohub/agent/terminal"
 	"github.com/dengyie/mangohub/agent/utils"
 	"github.com/dengyie/mangohub/agent/ws"
+	"github.com/gorilla/websocket"
 )
 
 var (

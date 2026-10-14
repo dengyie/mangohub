@@ -7,9 +7,9 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/utils"
 	"github.com/dengyie/mangohub/hub/web/oauth/factory"
+	"github.com/gin-gonic/gin"
 	"github.com/patrickmn/go-cache"
 )
 

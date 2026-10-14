@@ -10,8 +10,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/dop251/goja"
 	logger "github.com/dengyie/mangohub/hub/utils/log"
+	"github.com/dop251/goja"
 )
 
 type level uint8

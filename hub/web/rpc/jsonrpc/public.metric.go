@@ -286,46 +286,46 @@ func publicQueryMetrics(ctx context.Context, req *rpc.JsonRpcRequest) (any, *rpc
 	}
 
 	series := make([]publicMetricSeries, 0, len(metricKeys)*maxInt(1, len(entityIDs)))
-		for _, spec := range loadSpecs {
-			def := definitions[spec.metricKey]
-			item := publicMetricSeries{
-				MetricKey:     spec.metricKey,
-				Type:          string(def.Type),
-				Unit:          def.Unit,
-				RetentionDays: def.RetentionDays,
-				Tags:          sanitizeMetricTags(params.Tags, maskWallet),
-				FillEmpty:     metricFillEmpty,
-				MaxPoints:     spec.maxPoints,
-				Downsampled:   !useRaw,
+	for _, spec := range loadSpecs {
+		def := definitions[spec.metricKey]
+		item := publicMetricSeries{
+			MetricKey:     spec.metricKey,
+			Type:          string(def.Type),
+			Unit:          def.Unit,
+			RetentionDays: def.RetentionDays,
+			Tags:          sanitizeMetricTags(params.Tags, maskWallet),
+			FillEmpty:     metricFillEmpty,
+			MaxPoints:     spec.maxPoints,
+			Downsampled:   !useRaw,
+		}
+		if useRaw {
+			points := rawValues[spec.metricKey]
+			item.Points = make([]publicMetricPoint, 0, len(points))
+			for _, point := range points {
+				item.Points = append(item.Points, publicMetricPoint{
+					entityID: point.EntityID,
+					Time:     point.Timestamp.UTC(),
+					Value:    publicRawMetricValue(point.MetricName, point.Value, metricFillEmpty),
+					Count:    1,
+					Tags:     sanitizeMetricTags(point.Tags, maskWallet),
+					Labels:   point.Labels,
+				})
 			}
-			if useRaw {
-				points := rawValues[spec.metricKey]
-				item.Points = make([]publicMetricPoint, 0, len(points))
-				for _, point := range points {
-					item.Points = append(item.Points, publicMetricPoint{
-						entityID: point.EntityID,
-						Time:     point.Timestamp.UTC(),
-						Value:    publicRawMetricValue(point.MetricName, point.Value, metricFillEmpty),
-						Count:    1,
-						Tags:     sanitizeMetricTags(point.Tags, maskWallet),
-						Labels:   point.Labels,
-					})
-				}
-			} else {
-				item.DownsampleAlgorithm = string(spec.algorithm)
-				item.IntervalSeconds = spec.interval.Seconds()
-				points := rollupValues[spec.metricKey][spec.algorithm]
-				item.Points = make([]publicMetricPoint, 0, len(points))
-				for _, point := range points {
-					item.Points = append(item.Points, publicMetricPoint{
-						entityID: point.EntityID,
-						Time:     point.Bucket.UTC(),
-						Value:    publicRawMetricValue(point.MetricName, point.Value, metricFillEmpty),
-						Count:    point.Count,
-						Tags:     sanitizeMetricTags(point.Tags, maskWallet),
-					})
-				}
+		} else {
+			item.DownsampleAlgorithm = string(spec.algorithm)
+			item.IntervalSeconds = spec.interval.Seconds()
+			points := rollupValues[spec.metricKey][spec.algorithm]
+			item.Points = make([]publicMetricPoint, 0, len(points))
+			for _, point := range points {
+				item.Points = append(item.Points, publicMetricPoint{
+					entityID: point.EntityID,
+					Time:     point.Bucket.UTC(),
+					Value:    publicRawMetricValue(point.MetricName, point.Value, metricFillEmpty),
+					Count:    point.Count,
+					Tags:     sanitizeMetricTags(point.Tags, maskWallet),
+				})
 			}
+		}
 
 		byEntity := make(map[string][]publicMetricSeries, len(entityIDs))
 		for _, split := range splitPublicMetricSeries(item) {

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/web/connection"
+	"github.com/gin-gonic/gin"
 )
 
 // wsManifest is a plugin manifest that declares the hooks permission (the

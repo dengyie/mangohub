@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/dengyie/mangohub/hub/database/auditlog"
 	"github.com/dengyie/mangohub/hub/database/dbcore"
 	"github.com/dengyie/mangohub/hub/database/models"
 	"github.com/dengyie/mangohub/hub/database/tasks"
+	"github.com/gorilla/websocket"
 
 	"github.com/dengyie/mangohub/hub/internal/config"
 	"github.com/dengyie/mangohub/hub/pkg/rpc"

@@ -14,13 +14,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dengyie/mangohub/hub/pkg/jsruntime"
+	"github.com/dengyie/mangohub/hub/pkg/jsruntime/httpbody"
+	"github.com/dengyie/mangohub/hub/pkg/rpc"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/buffer"
 	"github.com/dop251/goja_nodejs/require"
 	"github.com/gin-gonic/gin"
-	"github.com/dengyie/mangohub/hub/pkg/jsruntime"
-	"github.com/dengyie/mangohub/hub/pkg/jsruntime/httpbody"
-	"github.com/dengyie/mangohub/hub/pkg/rpc"
 )
 
 // registerServerModule registers the "server" native module for one plugin

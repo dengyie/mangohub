@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/database/accounts"
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
 

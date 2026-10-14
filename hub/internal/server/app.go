@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/internal/config"
+	"github.com/gin-gonic/gin"
 )
 
 // cleanupFunc is a cleanup action run during shutdown.

@@ -100,8 +100,8 @@ func buildTaskCommandWithContext(ctx context.Context, command string) (*exec.Cmd
 		ctx = context.Background()
 	}
 	var cmd *exec.Cmd
-		if runtime.GOOS == "windows" {
-			scriptFile, err := os.CreateTemp("", "mangohub-task-*.ps1")
+	if runtime.GOOS == "windows" {
+		scriptFile, err := os.CreateTemp("", "mangohub-task-*.ps1")
 		if err != nil {
 			return nil, func() {}, err
 		}
@@ -471,10 +471,10 @@ func NewPingTask(conn *ws.SafeConn, taskID uint, pingType, pingTarget string) {
 	} else {
 		pingResult = int(latency)
 	}
-		finishedAt := time.Now()
-		wsPayload := v2.BuildPingResultPayload(taskID, pingType, pingResult, finishedAt)
-		// -1 代表丢包，由服务端统一聚合丢包率与延迟统计
-		if conn == nil {
+	finishedAt := time.Now()
+	wsPayload := v2.BuildPingResultPayload(taskID, pingType, pingResult, finishedAt)
+	// -1 代表丢包，由服务端统一聚合丢包率与延迟统计
+	if conn == nil {
 		if err := postV2RPC(wsPayload); err != nil {
 			log.Printf("Failed to upload ping result over POST: %v", err)
 		}

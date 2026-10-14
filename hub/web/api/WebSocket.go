@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 	"github.com/dengyie/mangohub/hub/internal/config"
 	"github.com/dengyie/mangohub/hub/web/connection"
 	"github.com/dengyie/mangohub/hub/web/security"
+	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
 
 type WebSocketUpgradeOption func(*websocket.Upgrader)

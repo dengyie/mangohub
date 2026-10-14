@@ -1,42 +1,42 @@
 package flags_pkg
 
 type Config struct {
-	AutoDiscoveryKey    string  `json:"auto_discovery_key" env:"AGENT_AUTO_DISCOVERY_KEY" flag:"auto-discovery"`         // 自动发现密钥
-	DisableAutoUpdate   bool    `json:"disable_auto_update" env:"AGENT_DISABLE_AUTO_UPDATE" flag:"disable-auto-update"`       // 禁用自动更新
-	DisableWebSsh       bool    `json:"disable_web_ssh" env:"AGENT_DISABLE_WEB_SSH" flag:"disable-web-ssh"`               // 禁用远程控制（web ssh 和 rce）
-	MemoryModeAvailable bool    `json:"memory_mode_available" env:"AGENT_MEMORY_MODE_AVAILABLE"`                           // [deprecated] 已弃用，请使用 MemoryIncludeCache
-	Token               string  `json:"token" env:"AGENT_TOKEN" flag:"token"`                                             // Token
-	Endpoint            string  `json:"endpoint" env:"AGENT_ENDPOINT" flag:"endpoint"`                                     // 面板地址
-	Interval            float64 `json:"interval" env:"AGENT_INTERVAL" flag:"interval"`                                     // 数据采集间隔，单位秒
+	AutoDiscoveryKey    string  `json:"auto_discovery_key" env:"AGENT_AUTO_DISCOVERY_KEY" flag:"auto-discovery"`             // 自动发现密钥
+	DisableAutoUpdate   bool    `json:"disable_auto_update" env:"AGENT_DISABLE_AUTO_UPDATE" flag:"disable-auto-update"`      // 禁用自动更新
+	DisableWebSsh       bool    `json:"disable_web_ssh" env:"AGENT_DISABLE_WEB_SSH" flag:"disable-web-ssh"`                  // 禁用远程控制（web ssh 和 rce）
+	MemoryModeAvailable bool    `json:"memory_mode_available" env:"AGENT_MEMORY_MODE_AVAILABLE"`                             // [deprecated] 已弃用，请使用 MemoryIncludeCache
+	Token               string  `json:"token" env:"AGENT_TOKEN" flag:"token"`                                                // Token
+	Endpoint            string  `json:"endpoint" env:"AGENT_ENDPOINT" flag:"endpoint"`                                       // 面板地址
+	Interval            float64 `json:"interval" env:"AGENT_INTERVAL" flag:"interval"`                                       // 数据采集间隔，单位秒
 	IgnoreUnsafeCert    bool    `json:"ignore_unsafe_cert" env:"AGENT_IGNORE_UNSAFE_CERT" flag:"ignore-unsafe-cert"`         // 忽略不安全的证书
-	MaxRetries          int     `json:"max_retries" env:"AGENT_MAX_RETRIES" flag:"max-retries"`                               // 最大重试次数
+	MaxRetries          int     `json:"max_retries" env:"AGENT_MAX_RETRIES" flag:"max-retries"`                              // 最大重试次数
 	ReconnectInterval   int     `json:"reconnect_interval" env:"AGENT_RECONNECT_INTERVAL" flag:"reconnect-interval"`         // 重连间隔，单位秒
-	InfoReportInterval  int     `json:"info_report_interval" env:"AGENT_INFO_REPORT_INTERVAL" flag:"info-report-interval"` // 基础信息上报间隔，单位分钟
-	IncludeNics         string  `json:"include_nics" env:"AGENT_INCLUDE_NICS" flag:"include-nics"`                         // 仅统计网卡，逗号分隔的网卡名称列表，支持通配符
-	ExcludeNics         string  `json:"exclude_nics" env:"AGENT_EXCLUDE_NICS" flag:"exclude-nics"`                         // 统计时排除的网卡，逗号分隔的网卡名称列表，支持通配符
-	IncludeMountpoints  string  `json:"include_mountpoints" env:"AGENT_INCLUDE_MOUNTPOINTS" flag:"include-mountpoint"`     // 磁盘统计的包含挂载点列表，使用分号分隔
-	MonthRotate         int     `json:"month_rotate" env:"AGENT_MONTH_ROTATE" flag:"month-rotate"`                         // 流量统计的月份重置日期（0表示禁用）
-	MemoryIncludeCache  bool    `json:"memory_include_cache" env:"AGENT_MEMORY_INCLUDE_CACHE" flag:"memory-include-cache"` // 包括缓存/缓冲区的内存使用情况
+	InfoReportInterval  int     `json:"info_report_interval" env:"AGENT_INFO_REPORT_INTERVAL" flag:"info-report-interval"`   // 基础信息上报间隔，单位分钟
+	IncludeNics         string  `json:"include_nics" env:"AGENT_INCLUDE_NICS" flag:"include-nics"`                           // 仅统计网卡，逗号分隔的网卡名称列表，支持通配符
+	ExcludeNics         string  `json:"exclude_nics" env:"AGENT_EXCLUDE_NICS" flag:"exclude-nics"`                           // 统计时排除的网卡，逗号分隔的网卡名称列表，支持通配符
+	IncludeMountpoints  string  `json:"include_mountpoints" env:"AGENT_INCLUDE_MOUNTPOINTS" flag:"include-mountpoint"`       // 磁盘统计的包含挂载点列表，使用分号分隔
+	MonthRotate         int     `json:"month_rotate" env:"AGENT_MONTH_ROTATE" flag:"month-rotate"`                           // 流量统计的月份重置日期（0表示禁用）
+	MemoryIncludeCache  bool    `json:"memory_include_cache" env:"AGENT_MEMORY_INCLUDE_CACHE" flag:"memory-include-cache"`   // 包括缓存/缓冲区的内存使用情况
 	MemoryReportRawUsed bool    `json:"memory_report_raw_used" env:"AGENT_MEMORY_REPORT_RAW_USED" flag:"memory-exclude-bcf"` // 使用原始内存使用情况报告
 	CustomDNS           string  `json:"custom_dns" env:"AGENT_CUSTOM_DNS" flag:"custom-dns"`                                 // 使用的自定义DNS服务器
-	EnableGPU           bool    `json:"enable_gpu" env:"AGENT_ENABLE_GPU" flag:"gpu"`                                     // 启用详细GPU监控
-	ShowWarning         bool    `json:"show_warning" env:"AGENT_SHOW_WARNING" flag:"show-warning"`                         // Windows 上显示安全警告，作为子进程运行一次
-	CustomIpv4          string  `json:"custom_ipv4" env:"AGENT_CUSTOM_IPV4" flag:"custom-ipv4"`                             // 自定义 IPv4 地址
-	CustomIpv6          string  `json:"custom_ipv6" env:"AGENT_CUSTOM_IPV6" flag:"custom-ipv6"`                             // 自定义 IPv6 地址
-	GetIpAddrFromNic    bool    `json:"get_ip_addr_from_nic" env:"AGENT_GET_IP_ADDR_FROM_NIC" flag:"get-ip-addr-from-nic"` // 从网卡获取IP地址
-	HostProc            string  `json:"host_proc" env:"HOST_PROC"`                                                         // 容器环境下宿主机/proc目录的挂载点，用于监控宿主机进程
-	ConfigFile          string  `json:"config_file" env:"AGENT_CONFIG_FILE" flag:"config"`                                 // JSON配置文件路径
-	DisableCompression  bool    `json:"disable_compression" env:"AGENT_DISABLE_COMPRESSION" flag:"disable-compression"`     // 禁用v2传输压缩
-	PreferIPVersion     string  `json:"prefer_ip_version" env:"AGENT_PREFER_IP_VERSION" flag:"prefer-ip-version"`         // 面板连接优先使用的 IP 版本：4 或 6
+	EnableGPU           bool    `json:"enable_gpu" env:"AGENT_ENABLE_GPU" flag:"gpu"`                                        // 启用详细GPU监控
+	ShowWarning         bool    `json:"show_warning" env:"AGENT_SHOW_WARNING" flag:"show-warning"`                           // Windows 上显示安全警告，作为子进程运行一次
+	CustomIpv4          string  `json:"custom_ipv4" env:"AGENT_CUSTOM_IPV4" flag:"custom-ipv4"`                              // 自定义 IPv4 地址
+	CustomIpv6          string  `json:"custom_ipv6" env:"AGENT_CUSTOM_IPV6" flag:"custom-ipv6"`                              // 自定义 IPv6 地址
+	GetIpAddrFromNic    bool    `json:"get_ip_addr_from_nic" env:"AGENT_GET_IP_ADDR_FROM_NIC" flag:"get-ip-addr-from-nic"`   // 从网卡获取IP地址
+	HostProc            string  `json:"host_proc" env:"HOST_PROC"`                                                           // 容器环境下宿主机/proc目录的挂载点，用于监控宿主机进程
+	ConfigFile          string  `json:"config_file" env:"AGENT_CONFIG_FILE" flag:"config"`                                   // JSON配置文件路径
+	DisableCompression  bool    `json:"disable_compression" env:"AGENT_DISABLE_COMPRESSION" flag:"disable-compression"`      // 禁用v2传输压缩
+	PreferIPVersion     string  `json:"prefer_ip_version" env:"AGENT_PREFER_IP_VERSION" flag:"prefer-ip-version"`            // 面板连接优先使用的 IP 版本：4 或 6
 	// PreferCgroupLimits: when true on Linux, mem_total/ram and cpu usage/cores
 	// use the process cgroup quota (Docker / Pterodactyl) instead of host /proc.
 	// No-op when the cgroup is unlimited. Env: AGENT_PREFER_CGROUP_LIMITS=true|1
 	PreferCgroupLimits bool `json:"prefer_cgroup_limits" env:"AGENT_PREFER_CGROUP_LIMITS" flag:"prefer-cgroup-limits"`
 	// Optional hard overrides when cgroup is missing/unlimited (bytes / fractional cores).
-	ForceMemoryTotal   uint64  `json:"force_memory_total" env:"AGENT_FORCE_MEMORY_TOTAL" flag:"force-memory-total"`       // 强制内存总量（面板配额，字节）
+	ForceMemoryTotal   uint64  `json:"force_memory_total" env:"AGENT_FORCE_MEMORY_TOTAL" flag:"force-memory-total"`          // 强制内存总量（面板配额，字节）
 	ForceCPUQuotaCores float64 `json:"force_cpu_quota_cores" env:"AGENT_FORCE_CPU_QUOTA_CORES" flag:"force-cpu-quota-cores"` // 强制 CPU 配额核数（可为小数）
-	ForceDiskTotal     uint64  `json:"force_disk_total" env:"AGENT_FORCE_DISK_TOTAL" flag:"force-disk-total"`           // 强制磁盘总量（面板配额，字节）
-	MinerAPIUrl        string  `json:"miner_api_url" env:"AGENT_MINER_API_URL" flag:"miner-api-url"`                       // 矿工统计 API 地址（SRBMiner /api/v2/status），空=不上报挖矿数据
+	ForceDiskTotal     uint64  `json:"force_disk_total" env:"AGENT_FORCE_DISK_TOTAL" flag:"force-disk-total"`                // 强制磁盘总量（面板配额，字节）
+	MinerAPIUrl        string  `json:"miner_api_url" env:"AGENT_MINER_API_URL" flag:"miner-api-url"`                         // 矿工统计 API 地址（SRBMiner /api/v2/status），空=不上报挖矿数据
 	// MinerControlCmd: 中心端管控本机挖矿的命令模板，必须含 {action} 占位符（hub 下发时替换为 start/stop）。
 	// Windows 经 PowerShell 执行、其它平台经 sh 执行；空=本机不接受挖矿管控。示例见文档 §mining-control。
 	MinerControlCmd string `json:"miner_control_cmd" env:"AGENT_MINER_CONTROL_CMD" flag:"miner-control-cmd"`

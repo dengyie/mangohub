@@ -11,6 +11,7 @@ import (
 
 	"github.com/dengyie/mangohub/hub/database/accounts"
 	"github.com/dengyie/mangohub/hub/database/auditlog"
+	"github.com/dengyie/mangohub/hub/database/clients"
 	"github.com/dengyie/mangohub/hub/database/dbcore"
 	"github.com/dengyie/mangohub/hub/database/models"
 	"github.com/dengyie/mangohub/hub/database/records"
@@ -372,6 +373,7 @@ func adminOrderClients(ctx context.Context, req *rpc.JsonRpcRequest) (any, *rpc.
 			return nil, rpc.MakeError(rpc.InternalError, "Failed to update client weight: "+err.Error(), nil)
 		}
 	}
+	clients.InvalidateClientCache()
 	actor, ip := auditActor(ctx)
 	auditlog.Log(ip, actor, "order clients", "info")
 	return nil, nil

@@ -4,12 +4,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/database/accounts"
-	"github.com/dengyie/mangohub/hub/database/dbcore"
-	"github.com/dengyie/mangohub/hub/database/models"
+	"github.com/dengyie/mangohub/hub/database/clients"
 	v2 "github.com/dengyie/mangohub/hub/protocol/v2"
 	agent_runtime "github.com/dengyie/mangohub/hub/web/agent"
+	"github.com/gin-gonic/gin"
 )
 
 func GetClients(c *gin.Context) {
@@ -29,7 +28,6 @@ func GetClients(c *gin.Context) {
 	// 初始化用户信息
 	var (
 		isLogin    = false
-		hiddenMap  = map[string]bool{}
 		session, _ = c.Cookie("session_token")
 	)
 
@@ -37,16 +35,6 @@ func GetClients(c *gin.Context) {
 	_, err = accounts.GetUserBySession(session)
 	if err == nil {
 		isLogin = true
-	}
-
-	// 仅在未登录时需要 Hidden 信息做过滤
-	if !isLogin {
-		var hiddenClients []models.Client
-		db := dbcore.GetDBInstance()
-		_ = db.Select("uuid").Where("hidden = ?", true).Find(&hiddenClients).Error
-		for _, cli := range hiddenClients {
-			hiddenMap[cli.UUID] = true
-		}
 	}
 
 	// 请求
@@ -77,7 +65,7 @@ func GetClients(c *gin.Context) {
 
 		// 在线客户端uuid列表（WebSocket 与非 WebSocket）
 		for _, key := range agent_runtime.GetAllOnlineUUIDs() {
-			if !isLogin && hiddenMap[key] {
+			if !isLogin && clients.IsHiddenClient(key) {
 				continue
 			}
 			if uuID != "" && key != uuID {
@@ -88,7 +76,7 @@ func GetClients(c *gin.Context) {
 
 		//过往节点数据信息
 		for key, report := range agent_runtime.GetLatestReport() {
-			if !isLogin && hiddenMap[key] {
+			if !isLogin && clients.IsHiddenClient(key) {
 				continue
 			}
 			if uuID != "" && key != uuID {

@@ -6,8 +6,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/database/accounts"
+	"github.com/gin-gonic/gin"
 )
 
 func RequireSensitive2FA() gin.HandlerFunc {

@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/internal/plugin"
+	"github.com/gin-gonic/gin"
 )
 
 // ServePluginFile serves a static file from an installed plugin directory,

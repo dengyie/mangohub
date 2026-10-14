@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/internal/plugin"
+	"github.com/gin-gonic/gin"
 )
 
 // ServePluginFile serves a public iframe page declared in a plugin manifest

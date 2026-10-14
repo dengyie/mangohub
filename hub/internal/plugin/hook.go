@@ -14,9 +14,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dop251/goja"
 	"github.com/dengyie/mangohub/hub/pkg/jsruntime"
 	"github.com/dengyie/mangohub/hub/pkg/jsruntime/httpbody"
+	"github.com/dop251/goja"
 )
 
 // hookKind identifies the HTTP hook phase.

@@ -8,7 +8,6 @@ import (
 
 	"github.com/dengyie/mangohub/hub/database"
 	"github.com/dengyie/mangohub/hub/database/clients"
-	"github.com/dengyie/mangohub/hub/database/dbcore"
 	"github.com/dengyie/mangohub/hub/database/models"
 	"github.com/dengyie/mangohub/hub/database/records"
 	"github.com/dengyie/mangohub/hub/database/tasks"
@@ -354,19 +353,10 @@ func publicGetPingRecords(ctx context.Context, req *rpc.JsonRpcRequest) (any, *r
 		Tasks     []map[string]any  `json:"tasks,omitempty"`
 	}
 
-	hiddenMap := map[string]bool{}
 	response := &resp{Count: 0, Records: []recordsResp{}}
 
-	if !isLogin {
-		var hiddenClients []models.Client
-		db := dbcore.GetDBInstance()
-		_ = db.Select("uuid").Where("hidden = ?", true).Find(&hiddenClients).Error
-		for _, cli := range hiddenClients {
-			hiddenMap[cli.UUID] = true
-		}
-		if params.UUID != "" && hiddenMap[params.UUID] {
-			return response, nil // 对尝试获取隐藏 uuid 返回空
-		}
+	if !isLogin && params.UUID != "" && clients.IsHiddenClient(params.UUID) {
+		return response, nil // 对尝试获取隐藏 uuid 返回空
 	}
 
 	hours := params.Hours
@@ -397,7 +387,7 @@ func publicGetPingRecords(ctx context.Context, req *rpc.JsonRpcRequest) (any, *r
 		total, loss, min, max int
 	})
 	for _, r := range recs {
-		if r.Client != "" && !isLogin && hiddenMap[r.Client] {
+		if r.Client != "" && !isLogin && clients.IsHiddenClient(r.Client) {
 			continue
 		}
 		rec := recordsResp{Time: r.Time.UTC(), Value: r.Value, Client: r.Client, TaskId: r.TaskId}
@@ -420,7 +410,7 @@ func publicGetPingRecords(ctx context.Context, req *rpc.JsonRpcRequest) (any, *r
 	if len(clientStats) > 0 {
 		response.BasicInfo = make([]clientBasicInfo, 0, len(clientStats))
 		for client, stats := range clientStats {
-			if client != "" && !isLogin && hiddenMap[client] {
+			if client != "" && !isLogin && clients.IsHiddenClient(client) {
 				continue
 			}
 			loss := float64(0)

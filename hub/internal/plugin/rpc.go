@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dop251/goja"
 	"github.com/dengyie/mangohub/hub/pkg/rpc"
+	"github.com/dop251/goja"
 )
 
 // registerRPC registers a plugin-owned RPC method. The handler is a

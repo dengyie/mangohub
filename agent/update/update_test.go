@@ -114,15 +114,15 @@ func TestDetectBuildTrack(t *testing.T) {
 }
 
 func TestExpectedAssetName(t *testing.T) {
-		tests := []struct {
-			goos   string
-			goarch string
-			want   string
-		}{
-			{"linux", "amd64", "mangohub-agent-linux-amd64"},
-			{"darwin", "arm64", "mangohub-agent-darwin-arm64"},
-			{"windows", "amd64", "mangohub-agent-windows-amd64.exe"},
-		}
+	tests := []struct {
+		goos   string
+		goarch string
+		want   string
+	}{
+		{"linux", "amd64", "mangohub-agent-linux-amd64"},
+		{"darwin", "arm64", "mangohub-agent-darwin-arm64"},
+		{"windows", "amd64", "mangohub-agent-windows-amd64.exe"},
+	}
 
 	for _, tt := range tests {
 		got := expectedAssetName(tt.goos, tt.goarch)

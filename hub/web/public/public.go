@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/internal/config"
+	"github.com/gin-gonic/gin"
 )
 
 // serveStaticData 统一向客户端发送带 Cache-Control 与 ETag 的静态资源，支持 HTTP 304 协商缓存。
@@ -50,8 +50,9 @@ func serveStaticData(c *gin.Context, reqPath string, mimeType string, content []
 //go:embed defaultTheme/komari-theme.json
 var PublicFS embed.FS
 
-//go:embed all:deerTheme
 // all: 前缀必须——deer 是 Next.js 产物，静态资源全在 _next/ 目录（_ 开头文件默认被 embed 忽略）
+//
+//go:embed all:deerTheme
 var DeerThemeFS embed.FS
 
 //go:embed defaultTheme/dist.tar.zst

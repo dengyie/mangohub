@@ -3,9 +3,9 @@ package admin
 import (
 	"image/png"
 
-	"github.com/gin-gonic/gin"
 	"github.com/dengyie/mangohub/hub/database/accounts"
 	"github.com/dengyie/mangohub/hub/web/api"
+	"github.com/gin-gonic/gin"
 	"github.com/pquerna/otp/totp"
 )
 
