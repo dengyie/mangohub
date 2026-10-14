@@ -86,7 +86,7 @@ jobs:
 
             echo "=== [2/6] Compiling binary in container ==="
             mkdir -p /home/mango/mangohub/bin
-            docker run --rm \
+            sudo docker run --rm \
               -v /home/mango/mangohub:/src \
               -w /src/hub \
               -e CGO_ENABLED=1 \
@@ -94,12 +94,12 @@ jobs:
               sh -c "apk add --no-cache gcc musl-dev && go build -ldflags '-s -w -linkmode external -extldflags \"-static\"' -trimpath -o /src/bin/mangohub ."
 
             echo "=== [3/6] Building production docker image ==="
-            docker build -t mangohub:latest -f Dockerfile .
+            sudo docker build -t mangohub:latest -f Dockerfile .
 
             echo "=== [4/6] Rolling update container ==="
-            docker stop komari || true
-            docker rm komari || true
-            docker run -d \
+            sudo docker stop komari || true
+            sudo docker rm komari || true
+            sudo docker run -d \
               --name komari \
               --restart unless-stopped \
               -p 127.0.0.1:25774:25774 \
@@ -122,7 +122,7 @@ jobs:
 
             if [ "$healthy" != "true" ]; then
               echo "Health check failed! Showing container logs:"
-              docker logs --tail 50 komari
+              sudo docker logs --tail 50 komari
               exit 1
             fi
 
