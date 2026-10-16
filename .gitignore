@@ -24,6 +24,11 @@ Thumbs.db
 *.swp
 *.swo
 
+# Frontend dependencies & build artifacts
+node_modules/
+**/node_modules/
+hub/web/admin/dist/
+
 # Submodule build artifacts
 agent/build/
 hub/build/

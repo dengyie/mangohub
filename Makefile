@@ -24,10 +24,19 @@ hub:
 	@echo "Built: $(BIN_DIR)/mangohub"
 
 admin:
+	@command -v npm >/dev/null 2>&1 || { echo "Error: npm is required but not installed"; exit 1; }
+	@command -v zstd >/dev/null 2>&1 || { echo "Error: zstd is required but not installed"; exit 1; }
 	@echo "Building admin frontend (Vite/React)..."
 	cd hub/web/admin && npm install && npm run build
-	@echo "Packaging dist.tar.zst for defaultTheme..."
-	tar -cf - -C hub/web/admin/dist . | zstd -19 -T0 -f -o hub/web/public/defaultTheme/dist.tar.zst
+	@echo "Packaging dist.tar.zst for defaultTheme atomically..."
+	@set -e; \
+	TMP_TAR=$$(mktemp /tmp/mangohub-admin-tar.XXXXXX); \
+	TMP_ZST=$$(mktemp /tmp/mangohub-admin-zst.XXXXXX); \
+	trap 'rm -f "$$TMP_TAR" "$$TMP_ZST"' EXIT; \
+	tar -cf "$$TMP_TAR" -C hub/web/admin/dist .; \
+	zstd -19 -T0 -f "$$TMP_TAR" -o "$$TMP_ZST"; \
+	[ -s "$$TMP_ZST" ] || { echo "Error: packaged archive is empty"; exit 1; }; \
+	mv -f "$$TMP_ZST" hub/web/public/defaultTheme/dist.tar.zst
 	@cp hub/web/admin/komari-theme.json hub/web/public/defaultTheme/komari-theme.json
 	@echo "Admin frontend built and packaged successfully."
 
