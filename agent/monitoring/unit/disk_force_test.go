@@ -71,21 +71,58 @@ func TestDirApparentSizeCacheExpiry(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "b"), make([]byte, 100), 0644); err != nil {
 		t.Fatal(err)
 	}
-		used2, ok2 := dirApparentSizeCached(dir)
-		if !ok2 || used2 != 105 {
-			t.Fatalf("after expiry: expected 105 (5+100), got %d (ok=%v)", used2, ok2)
-		}
+	used2, ok2 := dirApparentSizeCached(dir)
+	if !ok2 || used2 != 105 {
+		t.Fatalf("after expiry: expected 105 (5+100), got %d (ok=%v)", used2, ok2)
+	}
+}
+
+func TestIsPseudoFsPath(t *testing.T) {
+	tests := []struct {
+		path string
+		want bool
+	}{
+		{"/proc", true},
+		{"/proc/", true},
+		{"/sys", true},
+		{"/sys/", true},
+		{"/dev", true},
+		{"/dev/", true},
+		{"/run", true},
+		{"/run/", true},
+		{"/proc/cpuinfo", false},
+		{"/sys/devices", false},
+		{"/app/proc", false},
+		{"/home/user/sys", false},
+		{"/data/run", false},
+		{"", false},
 	}
 
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			if got := isPseudoFsPath(tt.path); got != tt.want {
+				t.Errorf("isPseudoFsPath(%q) = %v, want %v", tt.path, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestDirApparentSizeSkipPseudoDirs(t *testing.T) {
-	// 验证 walk 遇到 /proc、/sys、/dev、/run 等伪目录时能正确使用 SkipDir 跳过
+	// 验证 walk 遇到常规子目录正常递归，空目录与常规文件大小正确累计
 	dir := t.TempDir()
+	subDir := filepath.Join(dir, "subdir")
+	if err := os.Mkdir(subDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(dir, "rootfile"), make([]byte, 50), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(subDir, "subfile"), make([]byte, 30), 0644); err != nil {
 		t.Fatal(err)
 	}
 
 	used, ok := dirApparentSize(dir)
-	if !ok || used != 50 {
-		t.Fatalf("expected 50, got %d (ok=%v)", used, ok)
+	if !ok || used != 80 {
+		t.Fatalf("expected 80 (50+30), got %d (ok=%v)", used, ok)
 	}
 }

@@ -146,6 +146,12 @@ func dirApparentSizeCached(root string) (uint64, bool) {
 	return used, ok
 }
 
+// isPseudoFsPath 判断路径是否为需要跳过的 Linux 虚拟/伪文件系统根目录。
+func isPseudoFsPath(path string) bool {
+	clean := filepath.Clean(path)
+	return clean == "/proc" || clean == "/sys" || clean == "/dev" || clean == "/run"
+}
+
 // dirApparentSize 递归累加目录下常规文件的 apparent size（等价 du -sb）。
 // 不跟随符号链接，跳过无法读取的项，避免因单个错误中断统计。
 // 优先通过 d.Type().IsRegular() 判断文件类型，杜绝在目录/软链接/设备节点上进行多余的 stat 系统调用。
@@ -159,7 +165,7 @@ func dirApparentSize(root string) (uint64, bool) {
 		}
 		walked = true
 		if d.IsDir() {
-			if path == "/proc" || path == "/sys" || path == "/dev" || path == "/run" {
+			if isPseudoFsPath(path) {
 				return filepath.SkipDir
 			}
 			return nil
