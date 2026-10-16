@@ -653,13 +653,19 @@ func TestChildProcessPermissionAndExecution(t *testing.T) {
 		function verify(command) {
 			const childProcess = require("child_process");
 			const syncOutput = childProcess.execSync(command, { encoding: "utf8" }).trim();
-			return new Promise((resolve) => {
-				const child = childProcess.spawn(command, [], { shell: true, encoding: "utf8" });
-				let output = "";
-				child.stdout.on("data", (chunk) => output += String(chunk));
-				child.on("close", (code) => resolve(code === 0 && syncOutput === "child" && output.trim() === "child"));
-				child.on("error", () => resolve(false));
-			});
+				return new Promise((resolve, reject) => {
+					const child = childProcess.spawn(command, [], { shell: true, encoding: "utf8" });
+					let output = "";
+					child.stdout.on("data", (chunk) => output += String(chunk));
+					child.on("close", (code) => {
+						if (code === 0 && syncOutput === "child" && output.trim() === "child") {
+							resolve(true);
+						} else {
+							reject(new Error("verify mismatch: code=" + code + " sync=" + JSON.stringify(syncOutput) + " out=" + JSON.stringify(output)));
+						}
+					});
+					child.on("error", (err) => reject(err));
+				});
 		}
 	`, Options{NodeJS: true, AllowExec: true, BaseDir: t.TempDir(), Console: io.Discard, Timeout: 5 * time.Second})
 	if err != nil {

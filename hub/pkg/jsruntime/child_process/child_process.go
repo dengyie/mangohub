@@ -299,9 +299,12 @@ func (m *Module) spawnChild(vm *goja.Runtime, command string, arguments []string
 		return vm.ToValue(false)
 	})
 
-	m.pipeChildOutput(vm, stdoutReader, stdout, options.encoding)
-	m.pipeChildOutput(vm, stderrReader, stderr, options.encoding)
+	var stdioWg sync.WaitGroup
+	stdioWg.Add(2)
+	m.pipeChildOutput(vm, stdoutReader, stdout, options.encoding, stdioWg.Done)
+	m.pipeChildOutput(vm, stderrReader, stderr, options.encoding, stdioWg.Done)
 	go func() {
+		stdioWg.Wait()
 		err := cmd.Wait()
 		cancel()
 		m.runtime.RemoveResource(resourceID)
@@ -414,13 +417,16 @@ func childCallback(call goja.FunctionCall) goja.Callable {
 	return nil
 }
 
-func (m *Module) pipeChildOutput(vm *goja.Runtime, reader io.Reader, stream *goja.Object, encoding string) {
+func (m *Module) pipeChildOutput(vm *goja.Runtime, reader io.Reader, stream *goja.Object, encoding string, onDone func()) {
 	push, _ := goja.AssertFunction(stream.Get("push"))
 	setEncoding, _ := goja.AssertFunction(stream.Get("setEncoding"))
 	if encoding != "" && setEncoding != nil {
 		_, _ = setEncoding(stream, vm.ToValue(encoding))
 	}
 	go func() {
+		if onDone != nil {
+			defer onDone()
+		}
 		data := make([]byte, 32*1024)
 		for {
 			count, err := reader.Read(data)
@@ -439,12 +445,16 @@ func (m *Module) pipeChildOutput(vm *goja.Runtime, reader io.Reader, stream *goj
 				<-delivered
 			}
 			if err != nil {
-				m.runtime.RunOnLoop(func(vm *goja.Runtime) {
+				closed := make(chan struct{})
+				if m.runtime.RunOnLoop(func(vm *goja.Runtime) {
+					defer close(closed)
 					_ = m.runtime.RunJob(vm, "child_process stream close", func() error {
 						_, pushErr := push(stream, goja.Null())
 						return pushErr
 					})
-				})
+				}) {
+					<-closed
+				}
 				return
 			}
 		}
