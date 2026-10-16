@@ -1,10 +1,10 @@
 {
-  "name": "Komari",
+  "name": "Mangohub",
   "short": "default",
-  "description": "Komari default theme",
+  "description": "Mangohub default theme",
   "version": "1.0.0",
-  "author": "Akizon77",
-  "url": "https://github.com/komari-monitor/komari-web",
+  "author": "Mangohub Contributors",
+  "url": "https://github.com/dengyie/mangohub",
   "preview": "dist/assets/edit_117847723_p0.webp",
   "configuration": {
     "type": "managed",

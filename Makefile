@@ -1,4 +1,4 @@
-.PHONY: all build agent hub test clean
+.PHONY: all build agent hub admin test clean
 
 VERSION ?= $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
 VERSION_HASH ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
@@ -23,6 +23,14 @@ hub:
 		-o ../$(BIN_DIR)/mangohub .
 	@echo "Built: $(BIN_DIR)/mangohub"
 
+admin:
+	@echo "Building admin frontend (Vite/React)..."
+	cd hub/web/admin && npm install && npm run build
+	@echo "Packaging dist.tar.zst for defaultTheme..."
+	tar -cf - -C hub/web/admin/dist . | zstd -19 -T0 -f -o hub/web/public/defaultTheme/dist.tar.zst
+	@cp hub/web/admin/komari-theme.json hub/web/public/defaultTheme/komari-theme.json
+	@echo "Admin frontend built and packaged successfully."
+
 test:
 	@echo "Testing agent..."
 	cd agent && go test ./...
@@ -30,4 +38,4 @@ test:
 	cd hub && go test ./...
 
 clean:
-	rm -rf $(BIN_DIR) ./agent/build
+	rm -rf $(BIN_DIR) ./agent/build ./hub/web/admin/dist
