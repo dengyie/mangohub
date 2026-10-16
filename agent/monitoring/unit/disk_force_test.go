@@ -71,8 +71,21 @@ func TestDirApparentSizeCacheExpiry(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "b"), make([]byte, 100), 0644); err != nil {
 		t.Fatal(err)
 	}
-	used2, ok2 := dirApparentSizeCached(dir)
-	if !ok2 || used2 != 105 {
-		t.Fatalf("after expiry: expected 105 (5+100), got %d (ok=%v)", used2, ok2)
+		used2, ok2 := dirApparentSizeCached(dir)
+		if !ok2 || used2 != 105 {
+			t.Fatalf("after expiry: expected 105 (5+100), got %d (ok=%v)", used2, ok2)
+		}
+	}
+
+func TestDirApparentSizeSkipPseudoDirs(t *testing.T) {
+	// 验证 walk 遇到 /proc、/sys、/dev、/run 等伪目录时能正确使用 SkipDir 跳过
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "rootfile"), make([]byte, 50), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	used, ok := dirApparentSize(dir)
+	if !ok || used != 50 {
+		t.Fatalf("expected 50, got %d (ok=%v)", used, ok)
 	}
 }

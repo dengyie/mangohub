@@ -159,6 +159,9 @@ func dirApparentSize(root string) (uint64, bool) {
 		}
 		walked = true
 		if d.IsDir() {
+			if path == "/proc" || path == "/sys" || path == "/dev" || path == "/run" {
+				return filepath.SkipDir
+			}
 			return nil
 		}
 		if !d.Type().IsRegular() {
