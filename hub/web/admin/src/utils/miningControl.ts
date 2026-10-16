@@ -1,0 +1,157 @@
+/**
+ * 挖矿管控 RPC 契约解释与任务结果轮询（无 React 依赖）。
+ * Hub admin:miningControl 会分区返回 sent / queued / failed / offline；
+ * 前端必须先消费这些字段，再决定是否轮询 getTaskResultsByTaskId。
+ */
+
+export const MINING_TASK_RESULT_POLL_MS = 2000;
+export const MINING_TASK_RESULT_POLL_MAX = 15; // 首次立即查询 + 14 次间隔，覆盖 ~30s
+export const JSONRPC_NOT_FOUND = -32044;
+
+export type MiningControlResp = {
+  task_id?: string;
+  action?: string;
+  clients?: string[];
+  sent_clients?: string[];
+  queued_clients?: string[];
+  offline_clients?: string[];
+  failed_clients?: string[];
+};
+
+export type MiningTaskResult = {
+  client?: string;
+  result?: string;
+  exit_code?: number | null;
+  finished_at?: string | null;
+};
+
+export type MiningControlOutcome =
+  | { kind: "poll"; taskId: string }
+  | { kind: "queued"; taskId: string }
+  | { kind: "failed"; reason: "offline" | "dispatch" | "no_task_id" };
+
+export type MiningPollOutcome =
+  | { kind: "result"; exitCode: number; message: string }
+  | { kind: "timeout" };
+
+export type MiningTaskRpcCall = (
+  method: string,
+  params: { task_id: string },
+) => Promise<MiningTaskResult[] | null | undefined>;
+
+export type MinerIdentity = {
+  tags?: string;
+  miner_configured?: boolean;
+  miner_controllable?: boolean;
+};
+
+function hasMinerTag(tags?: string): boolean {
+  const text = tags?.toLowerCase() ?? "";
+  return text.includes("miner") || text.includes("mining");
+}
+
+/** 矿机身份：启动参数优先，实时算力 / 24h 曲线 / 手工标签给未升级探针兜底。 */
+export function isConfiguredMiner(
+  info: MinerIdentity,
+  hasLiveMining: boolean,
+  hasHistoryMetrics: boolean,
+): boolean {
+  return Boolean(
+    info.miner_configured ||
+      info.miner_controllable ||
+      hasLiveMining ||
+      hasHistoryMetrics ||
+      hasMinerTag(info.tags),
+  );
+}
+
+/**
+ * 老探针不报这两个字段时，缺字段不能当成 false，正在挖或打过标签的矿机仍给按钮。
+ * 只有新探针明确「已配置且不可控」时才换成不可远程启停。
+ */
+export function showsMiningControls(
+  info: MinerIdentity,
+  hasLiveMining: boolean,
+  hasHistoryMetrics: boolean,
+): boolean {
+  if (info.miner_controllable === true) return true;
+  // 只有新探针明确报了「已配置且不可控」才藏按钮。
+  // 字段缺失不是 false：基础信息没带到时，仍按在挖、曲线和标签兜底。
+  if (info.miner_configured === true && info.miner_controllable === false) return false;
+  return hasLiveMining || hasHistoryMetrics || hasMinerTag(info.tags);
+}
+
+export function includesClient(list: string[] | undefined, uuid: string): boolean {
+  return Array.isArray(list) && list.includes(uuid);
+}
+
+export function interpretMiningControlResp(
+  resp: MiningControlResp | null | undefined,
+  uuid: string,
+): MiningControlOutcome {
+  if (!resp?.task_id) return { kind: "failed", reason: "no_task_id" };
+  if (includesClient(resp.failed_clients, uuid) || includesClient(resp.offline_clients, uuid)) {
+    return { kind: "failed", reason: includesClient(resp.offline_clients, uuid) ? "offline" : "dispatch" };
+  }
+  if (includesClient(resp.queued_clients, uuid) && !includesClient(resp.sent_clients, uuid)) {
+    return { kind: "queued", taskId: resp.task_id };
+  }
+  return { kind: "poll", taskId: resp.task_id };
+}
+
+export function isJsonRpcNotFound(error: unknown): boolean {
+  if (!error) return false;
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes(`RPC Error ${JSONRPC_NOT_FOUND}`) ||
+    /No results found for this task/i.test(message)
+  );
+}
+
+export function sanitizeMiningTaskMessage(raw: string | null | undefined): string {
+  return (raw ?? "").replace(/\0/g, "").trim().slice(0, 200);
+}
+
+/** CreateTask 会先插占位行（exit_code/finished_at 均为 null）；必须等真正回传才算完成。 */
+export function isFinishedMiningTaskResult(
+  row: MiningTaskResult | undefined | null,
+): boolean {
+  if (!row) return false;
+  return row.exit_code != null || Boolean(row.finished_at);
+}
+
+export async function pollMiningTaskResult(
+  call: MiningTaskRpcCall,
+  uuid: string,
+  taskId: string,
+  options?: {
+    intervalMs?: number;
+    maxAttempts?: number;
+    isAlive?: () => boolean;
+    sleep?: (ms: number) => Promise<void>;
+  },
+): Promise<MiningPollOutcome> {
+  const intervalMs = options?.intervalMs ?? MINING_TASK_RESULT_POLL_MS;
+  const maxAttempts = options?.maxAttempts ?? MINING_TASK_RESULT_POLL_MAX;
+  const isAlive = options?.isAlive ?? (() => true);
+  const sleep = options?.sleep ?? ((ms: number) => new Promise((resolve) => setTimeout(resolve, ms)));
+
+  for (let i = 0; i < maxAttempts; i++) {
+    if (i > 0) await sleep(intervalMs);
+    if (!isAlive()) return { kind: "timeout" };
+    try {
+      const results = await call("admin:getTaskResultsByTaskId", { task_id: taskId });
+      const mine = (results ?? []).find((r) => r?.client === uuid);
+      if (isFinishedMiningTaskResult(mine)) {
+        return {
+          kind: "result",
+          exitCode: Number(mine!.exit_code ?? -1),
+          message: sanitizeMiningTaskMessage(mine!.result),
+        };
+      }
+    } catch (error) {
+      if (!isJsonRpcNotFound(error)) throw error;
+    }
+  }
+  return { kind: "timeout" };
+}
