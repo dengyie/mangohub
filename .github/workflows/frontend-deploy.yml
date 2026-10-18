@@ -47,6 +47,7 @@ jobs:
           npm test
           npm run typecheck
           npm run build
+          node --test tests/build-output/branding.test.mjs
       - name: Package versioned theme
         working-directory: hub/web/theme/komari-deer
         run: |

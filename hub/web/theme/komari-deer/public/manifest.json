@@ -1,7 +1,7 @@
 {
   "name": "Mango Hub",
   "short_name": "Mango Hub",
-  "description": "A simple server monitor tool",
+  "description": "Mango Hub server monitoring dashboard.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

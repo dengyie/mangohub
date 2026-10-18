@@ -54,7 +54,7 @@ const Footer = () => {
 
         {/* Bottom text */}
         <p className="text-center text-xs text-muted-foreground">
-          <a href="https://github.com/dengyie/mango-hub" target="_blank" rel="noreferrer" className="font-semibold text-foreground hover:text-primary transition-colors">Mango Hub</a>
+          <a href="https://github.com/dengyie/mangohub" target="_blank" rel="noreferrer" className="font-semibold text-foreground hover:text-primary transition-colors">Mango Hub</a>
           {' · '}
           <span>Every server at a glance</span>
         </p>

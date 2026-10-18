@@ -6,7 +6,6 @@ import { useTranslation } from "react-i18next";
 import NodeDisplay from "@/components/NodeDisplay";
 import { useLiveData } from "@/contexts/LiveDataContext";
 import { useNodeList } from "@/contexts/NodeListContext";
-import { usePublicInfo } from "@/contexts/PublicInfoContext";
 import dynamic from "next/dynamic";
 import { ChevronDown, Globe2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,15 +19,6 @@ export default function DashboardContent() {
   const [t] = useTranslation();
   const { live_data, isLive } = useLiveData();
   const [mapOpen, setMapOpen] = useState(true);
-  const { publicInfo } = usePublicInfo();
-  
-  // Sync document title with backend-set custom title
-  useEffect(() => {
-    if (publicInfo?.sitename) {
-      document.title = publicInfo.sitename;
-    }
-  }, [publicInfo?.sitename]);
-  
   //#region 节点数据
   const { nodeList, isLoading, error, refresh } = useNodeList();
 

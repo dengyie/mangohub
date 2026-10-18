@@ -25,7 +25,7 @@ const NavBar = () => {
               <img src="/assets/logo.png" alt="logo" className="h-8 w-8 object-contain" />
             </div>
             <span className="truncate text-lg md:text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-              Mango VPS
+              Mango Hub
             </span>
           </Link>
         </div>
