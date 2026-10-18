@@ -81,17 +81,30 @@ jobs:
           git fetch --no-tags --depth=1 origin main
           test "$GITHUB_SHA" = "$(git rev-parse FETCH_HEAD)"
       - name: Deploy through restricted SSH command
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HK_HOST }}
+          port: ${{ secrets.HK_PORT }}
+          username: ${{ secrets.HK_USER }}
+          key: ${{ secrets.HK_SSH_KEY }}
+          source: mangohub-theme.tar.gz
+          target: /tmp
+          overwrite: true
+
+      - name: Activate theme through receiver
+        uses: appleboy/ssh-action@v1.2.0
         env:
-          DEPLOY_KEY: ${{ secrets.FRONTEND_DEPLOY_KEY }}
-          KNOWN_HOSTS: ${{ secrets.FRONTEND_KNOWN_HOSTS }}
-          DEPLOY_HOST: ${{ vars.FRONTEND_DEPLOY_HOST }}
-        run: |
-          set -euo pipefail
-          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS" && test -n "$DEPLOY_HOST"
-          install -d -m 700 "$HOME/.ssh"
-          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/mangohub_deploy"
-          chmod 600 "$HOME/.ssh/mangohub_deploy"
-          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
-          CHECKSUM="$(cut -d ' ' -f1 mangohub-theme.sha256)"
-          ssh -T -i "$HOME/.ssh/mangohub_deploy" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 \
-            "mango@$DEPLOY_HOST" "deploy $GITHUB_SHA $CHECKSUM" < mangohub-theme.tar.gz
+          DEPLOY_REVISION: ${{ github.sha }}
+        with:
+          host: ${{ secrets.HK_HOST }}
+          port: ${{ secrets.HK_PORT }}
+          username: ${{ secrets.HK_USER }}
+          key: ${{ secrets.HK_SSH_KEY }}
+          script_stop: true
+          envs: DEPLOY_REVISION
+          script: |
+            set -eu
+            archive=/tmp/mangohub-theme.tar.gz
+            checksum="$(sha256sum "$archive" | cut -d ' ' -f1)"
+            sudo env SSH_ORIGINAL_COMMAND="deploy $DEPLOY_REVISION $checksum" \
+              python3 /home/mango/mangohub/hub/scripts/deploy-theme.py < "$archive"
