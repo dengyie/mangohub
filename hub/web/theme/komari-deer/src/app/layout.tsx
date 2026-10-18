@@ -6,8 +6,8 @@ import Footer from "@/components/Footer";
 import RemainingValueCalculator from "@/components/RemainingValueCalculator";
 
 export const metadata: Metadata = {
-  title: "Komari Monitor",
-  description: "A simple server monitor tool.",
+  title: "Mango Hub",
+  description: "Mango Hub server monitoring dashboard.",
 };
 
 export default function RootLayout({
