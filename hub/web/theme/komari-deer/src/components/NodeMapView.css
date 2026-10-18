@@ -35,7 +35,6 @@
 .node-map-view__node-links a { text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
 .node-map-view__unmapped { font-size: 11px; color: var(--muted-foreground); }
 .node-map-view__unmapped summary { cursor: pointer; padding: 5px 0; }
-.node-map-view__visual { display: grid; justify-items: center; align-content: center; gap: 8px; min-width: 0; }
 .pixel-globe { display: grid; justify-items: center; min-width: 0; }
 .pixel-globe canvas { width: min(100%, 310px); height: auto; aspect-ratio: 1; image-rendering: pixelated; cursor: grab; touch-action: pan-y; }
 .pixel-globe canvas:active { cursor: grabbing; }
@@ -50,7 +49,7 @@
   .node-map-view__description { grid-column: 1; margin-top: 0.65rem; font-size: 10px; line-height: 1.6; }
   .node-map-view__description > span { padding: 0; }
   .node-map-view__legend { grid-column: 1 / -1; margin: 0.8rem 0; gap: 0.6rem; }
-  .node-map-view__visual { grid-column: 2; grid-row: 1 / 4; }
+  .pixel-globe { grid-column: 2; grid-row: 1 / 4; }
   .pixel-globe canvas { width: 100%; }
   .pixel-globe__controls { margin-top: 0; gap: 0; }
   .node-map-view__regions { grid-column: 1 / -1; flex-wrap: nowrap; max-height: none; overflow-x: auto; padding-bottom: 4px; }
