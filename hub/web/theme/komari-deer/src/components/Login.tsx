@@ -17,6 +17,7 @@ import { TablerSettings } from "./Icones/Tabler";
 import { AccountProvider, useAccount } from "@/contexts/AccountContext";
 import { usePublicInfo } from "@/contexts/PublicInfoContext";
 import { useMounted } from "@/hooks/useMounted";
+import { LoaderCircle } from "lucide-react";
 
 type LoginDialogProps = {
   trigger?: React.ReactNode | string;
@@ -104,7 +105,18 @@ const LoginDialog = ({ trigger, autoOpen = false, showSettings = true, info, onL
     };
 
     if (loading) {
-      return <Button disabled>{mounted ? t("loading") : "Loading..."}</Button>;
+      return (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9"
+          disabled
+          aria-label={mounted ? t("loading") : "Loading"}
+        >
+          <LoaderCircle className="app-login-spinner h-4 w-4 animate-spin" aria-hidden="true" />
+        </Button>
+      );
     }
     if (error || !account) {
       return (

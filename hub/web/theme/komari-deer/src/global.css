@@ -199,6 +199,139 @@ body, * {
   scrollbar-color: rgba(80,80,80,0.4) transparent;
 }
 
+.app-static-shell {
+  min-height: min(68vh, 560px);
+}
+
+.mango-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--muted) 82%, transparent);
+}
+
+.mango-skeleton::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  transform: translateX(-100%);
+  background: linear-gradient(100deg, transparent 20%, color-mix(in srgb, var(--foreground) 7%, transparent) 50%, transparent 80%);
+  animation: mangoSkeletonShimmer 1.8s ease-in-out infinite;
+}
+
+.dashboard-skeleton__map {
+  min-height: clamp(320px, 42vw, 520px);
+  background:
+    radial-gradient(circle at 48% 44%, color-mix(in srgb, var(--primary) 13%, transparent), transparent 28%),
+    linear-gradient(135deg, color-mix(in srgb, var(--card) 96%, var(--primary)), var(--muted));
+}
+
+.dashboard-skeleton__map-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.28;
+  background-image: linear-gradient(color-mix(in srgb, var(--foreground) 9%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--foreground) 9%, transparent) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(to bottom, transparent, black 25%, black 75%, transparent);
+}
+
+.dashboard-skeleton__map-orbit {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent);
+  border-radius: 999px;
+  transform: translate(-50%, -50%) rotate(-18deg);
+}
+
+.dashboard-skeleton__map-orbit--outer {
+  width: min(68vw, 520px);
+  height: min(30vw, 220px);
+}
+
+.dashboard-skeleton__map-orbit--inner {
+  width: min(44vw, 340px);
+  height: min(20vw, 145px);
+  transform: translate(-50%, -50%) rotate(28deg);
+}
+
+.dashboard-skeleton__map-core {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: 74px;
+  height: 74px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--card) 72%, transparent);
+  box-shadow: 0 0 0 12px color-mix(in srgb, var(--primary) 6%, transparent), 0 0 42px color-mix(in srgb, var(--primary) 20%, transparent);
+  transform: translate(-50%, -50%);
+}
+
+.dashboard-skeleton__map-pulse,
+.dashboard-skeleton__status-dot {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 0 7px color-mix(in srgb, var(--primary) 14%, transparent);
+  animation: mangoSkeletonPulse 1.8s ease-in-out infinite;
+}
+
+.dashboard-skeleton__status-dot {
+  width: 7px;
+  height: 7px;
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+.dashboard-skeleton__card {
+  min-height: 250px;
+  background: color-mix(in srgb, var(--card) 88%, var(--muted));
+}
+
+.app-loading-track {
+  background: var(--muted);
+}
+
+.app-loading-sweep {
+  background: var(--primary);
+  animation: appLoadingSweep 1.35s ease-in-out infinite;
+}
+
+@keyframes appLoadingSweep {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(310%);
+  }
+}
+
+@keyframes mangoSkeletonShimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes mangoSkeletonPulse {
+  50% {
+    opacity: 0.55;
+    transform: scale(0.82);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-loading-sweep,
+  .mango-skeleton::after,
+  .dashboard-skeleton__map-pulse,
+  .dashboard-skeleton__status-dot,
+  .app-login-spinner {
+    animation: none;
+  }
+}
+
 .deer-network-capsule {
   position: fixed;
   left: 50%;
