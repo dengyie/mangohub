@@ -59,10 +59,12 @@ interface PixelGlobeProps {
   selectedKey: string | null;
   onSelect: (key: string) => void;
   onHover: (key: string | null) => void;
+  paused: boolean;
+  onPausedChange: (paused: boolean) => void;
   hoverDetails?: ReactNode;
 }
 
-export function PixelGlobe({ regions, selectedKey, onSelect, onHover, hoverDetails }: PixelGlobeProps) {
+export function PixelGlobe({ regions, selectedKey, onSelect, onHover, paused, onPausedChange, hoverDetails }: PixelGlobeProps) {
   const { t } = useTranslation();
   const stageRef = useRef<HTMLDivElement>(null);
   const hoverKeyRef = useRef<string | null>(null);
@@ -70,7 +72,6 @@ export function PixelGlobe({ regions, selectedKey, onSelect, onHover, hoverDetai
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rotation = useRef(75);
   const paintRef = useRef<() => void>(() => undefined);
-  const [paused, setPaused] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
   const samples = useMemo(createGlobeSamples, []);
 
@@ -244,7 +245,7 @@ export function PixelGlobe({ regions, selectedKey, onSelect, onHover, hoverDetai
     {unavailable && <p role="status" className="text-xs text-muted-foreground">{t("dashboard.globeUnavailable")}</p>}
     <div className="pixel-globe__controls">
       <Button variant="ghost" size="icon" aria-label={t("dashboard.rotateLeft")} onClick={() => turn(-30)}><ArrowLeft /></Button>
-      <Button variant="ghost" size="icon" aria-label={t(paused ? "dashboard.resumeGlobe" : "dashboard.pauseGlobe")} aria-pressed={paused} onClick={() => setPaused((value) => !value)}>{paused ? <Play /> : <Pause />}</Button>
+      <Button variant="ghost" size="icon" aria-label={t(paused ? "dashboard.resumeGlobe" : "dashboard.pauseGlobe")} aria-pressed={paused} onClick={() => onPausedChange(!paused)}>{paused ? <Play /> : <Pause />}</Button>
       <Button variant="ghost" size="icon" aria-label={t("dashboard.rotateRight")} onClick={() => turn(30)}><ArrowRight /></Button>
     </div>
   </div>;

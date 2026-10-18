@@ -8,6 +8,7 @@ import { buildMapViewSummary } from "@/utils/mapRegions";
 import Flag from "@/components/Flag";
 import { GlobeRegionDetails } from "./GlobeRegionDetails";
 import { PixelGlobe } from "./PixelGlobe";
+import { PixelCat } from "./PixelCat";
 import "./NodeMapView.css";
 
 interface NodeMapViewProps {
@@ -22,8 +23,10 @@ export function NodeMapView({ nodes, liveData, mapOnly = false }: NodeMapViewPro
   const regionsByKey = useMemo(() => new Map(summary.regions.map((region) => [region.key, region])), [summary.regions]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+  const [globePaused, setGlobePaused] = useState(false);
   const hovered = hoveredKey ? regionsByKey.get(hoveredKey) : null;
   const selected = selectedKey ? regionsByKey.get(selectedKey) : null;
+  const catMood = globePaused ? "sleeping" : hovered ? "watching" : selected ? "happy" : "idle";
   return <div className={`node-map-view ${mapOnly ? "node-map-view--embedded" : ""}`}>
     <div className="node-map-view__copy">
       <p className="node-map-view__eyebrow">MANGOHUB / GLOBAL NETWORK</p>
@@ -42,6 +45,9 @@ export function NodeMapView({ nodes, liveData, mapOnly = false }: NodeMapViewPro
       </div>
       {summary.unmappedNodes.length > 0 && <details className="node-map-view__unmapped"><summary>{t("mapView.regionUnknown")} · {summary.unmappedNodes.length}</summary><div className="node-map-view__node-links">{summary.unmappedNodes.map((node) => <a key={node.uuid} href={`#/instance/${node.uuid}`}>{node.name}</a>)}</div></details>}
     </div>
-    <PixelGlobe regions={summary.regions} selectedKey={selectedKey} onSelect={setSelectedKey} onHover={setHoveredKey} hoverDetails={hovered ? <div className="pixel-globe__hover"><GlobeRegionDetails region={hovered} liveData={liveData} /></div> : undefined} />
+    <div className="node-map-view__visual">
+      <PixelGlobe regions={summary.regions} selectedKey={selectedKey} onSelect={setSelectedKey} onHover={setHoveredKey} paused={globePaused} onPausedChange={setGlobePaused} hoverDetails={hovered ? <div className="pixel-globe__hover"><GlobeRegionDetails region={hovered} liveData={liveData} /></div> : undefined} />
+      <PixelCat mood={catMood} paused={globePaused} selectedLabel={hovered?.label ?? selected?.label} onTogglePaused={() => setGlobePaused((value) => !value)} />
+    </div>
   </div>;
 }
