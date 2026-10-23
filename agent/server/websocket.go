@@ -33,6 +33,10 @@ var (
 const (
 	v2SeenEventTTL   = 10 * time.Minute
 	v2SeenEventLimit = 4096
+
+	// A report is written every reportInterval (default 3s). A write still
+	// blocked after wsWriteTimeout therefore means the peer or the path is gone.
+	wsWriteTimeout = 10 * time.Second
 )
 
 func EstablishWebSocketConnection() {
@@ -101,7 +105,7 @@ func EstablishWebSocketConnection() {
 			nextReportAt = time.Now().Add(reportInterval)
 
 			data := v2.BuildReportPayload(monitoring.GenerateReport())
-			err = conn.WriteMessage(websocket.TextMessage, data)
+			err = conn.WriteMessageWithDeadline(websocket.TextMessage, data, wsWriteTimeout)
 			if err != nil {
 				log.Println("Failed to send WebSocket message:", err)
 				conn.Close()
@@ -111,7 +115,7 @@ func EstablishWebSocketConnection() {
 			}
 		case <-heartbeatTicker.C:
 			if conn != nil {
-				err := conn.WriteMessage(websocket.PingMessage, nil)
+				err := conn.WriteMessageWithDeadline(websocket.PingMessage, nil, wsWriteTimeout)
 				if err != nil {
 					log.Println("Failed to send heartbeat:", err)
 					conn.Close()
