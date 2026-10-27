@@ -176,7 +176,16 @@ func (s *terminalSession) readOutput() {
 		if conn == nil {
 			continue
 		}
-		if err := conn.WriteMessage(websocket.BinaryMessage, buf[:n]); err != nil {
+		// Bound the write: on a blackholed path an unbounded WriteMessage
+		// blocks until TCP retransmissions exhaust (~15 min), leaving a
+		// zombie session whose input reader is stuck in ReadMessage. A
+		// deadline turns that into a quick detach, and closing the conn
+		// unblocks the reader.
+		_ = conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+		err = conn.WriteMessage(websocket.BinaryMessage, buf[:n])
+		_ = conn.SetWriteDeadline(time.Time{})
+		if err != nil {
+			_ = conn.Close()
 			s.detach(conn)
 		}
 	}

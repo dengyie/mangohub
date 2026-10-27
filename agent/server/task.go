@@ -480,7 +480,10 @@ func NewPingTask(conn *ws.SafeConn, taskID uint, pingType, pingTarget string) {
 		}
 		return
 	}
-	if err := conn.WriteJSON(wsPayload); err != nil {
+	// This conn is shared with the report loop: an unbounded write would hold
+	// the conn mutex through the full TCP retransmission window on a blackholed
+	// path and stall the reports, so use the bounded variant.
+	if err := conn.WriteJSONWithDeadline(wsPayload, wsWriteTimeout); err != nil {
 		log.Printf("Failed to write JSON to WebSocket: %v", err)
 	}
 
