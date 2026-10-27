@@ -38,7 +38,16 @@ func (sc *SafeConn) WriteMessageWithDeadline(messageType int, data []byte, timeo
 			return err
 		}
 	}
-	return sc.conn.WriteMessage(messageType, data)
+	err := sc.conn.WriteMessage(messageType, data)
+	if timeout > 0 {
+		// The report conn is shared with terminal and ping-result writers that
+		// set no deadline of their own. gorilla keeps the deadline for future
+		// writes, so leaving it set would make those writers fail outright
+		// whenever they run more than one timeout after the last report.
+		// Clear it so this timeout bounds only this write.
+		_ = sc.conn.SetWriteDeadline(time.Time{})
+	}
+	return err
 }
 
 func (sc *SafeConn) WriteJSON(v interface{}) error {
