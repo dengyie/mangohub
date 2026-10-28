@@ -86,12 +86,19 @@ jobs:
 
             echo "=== [2/6] Compiling binary in container ==="
             mkdir -p /home/mango/mangohub/bin
+            # This VPS has 891MB RAM and runs the production hub. An unbounded
+            # go build (default GOMAXPROCS, parallel compile of CGO/sqlite) pushes
+            # the whole box into swap thrash and can stall the hub for minutes.
+            # Cap the build container and serialize the compiler.
             sudo docker run --rm \
+              --memory 350m --memory-swap 350m \
+              -e GOMAXPROCS=1 \
+              -e GOFLAGS="-p=1" \
               -v /home/mango/mangohub:/src \
               -w /src/hub \
               -e CGO_ENABLED=1 \
               golang:alpine \
-              sh -c "apk add --no-cache gcc musl-dev && go build -ldflags '-s -w -linkmode external -extldflags \"-static\"' -trimpath -o /src/bin/mangohub ."
+              sh -c "apk add --no-cache gcc musl-dev && go build -p 1 -ldflags '-s -w -linkmode external -extldflags \"-static\"' -trimpath -o /src/bin/mangohub ."
 
             echo "=== [3/6] Building production docker image ==="
             sudo docker build -t mangohub:latest -f Dockerfile .
@@ -102,6 +109,7 @@ jobs:
             sudo docker run -d \
               --name komari \
               --restart unless-stopped \
+              --memory 400m --memory-swap 400m \
               -p 127.0.0.1:25774:25774 \
               -v /home/mango/komari/data:/app/data \
               --env-file /home/mango/komari/vault.env \
