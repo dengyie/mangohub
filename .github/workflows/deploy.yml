@@ -78,6 +78,7 @@ jobs:
           username: ${{ secrets.HK_USER }}
           key: ${{ secrets.HK_SSH_KEY }}
           script_stop: true
+          command_timeout: 30m
           script: |
             echo "=== [1/6] Syncing code on VPS ==="
             cd /home/mango/mangohub
@@ -89,11 +90,12 @@ jobs:
             # This VPS has 891MB RAM and runs the production hub. An unbounded
             # go build (default GOMAXPROCS, parallel compile of CGO/sqlite) pushes
             # the whole box into swap thrash and can stall the hub for minutes.
-            # Cap the build container and serialize the compiler.
+            # Cap the build container's resident set: 350m RSS keeps the box
+            # responsive, 1g swap lets the CGO compile survive (350m alone OOM-kills
+            # cc1 inside sqlite) — a one-shot CI build can afford to be slow.
             sudo docker run --rm \
-              --memory 350m --memory-swap 350m \
+              --memory 350m --memory-swap 1g \
               -e GOMAXPROCS=1 \
-              -e GOFLAGS="-p=1" \
               -v /home/mango/mangohub:/src \
               -w /src/hub \
               -e CGO_ENABLED=1 \
