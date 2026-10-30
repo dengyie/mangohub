@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 type NvidiaSMI struct {
@@ -57,7 +58,19 @@ func (smi *NvidiaSMI) pollNvidiaSMI() []byte {
 	if err != nil {
 		return nil
 	}
-	return output
+	return sanitizeSMIOutput(output)
+}
+
+// sanitizeSMIOutput 保证 nvidia-smi 的输出是合法 UTF-8。
+// Windows 下 nvidia-smi 会用控制台代码页（如 GBK）输出 process_name 等含中文的路径，
+// 整份 XML 因此不是合法 UTF-8，encoding/xml 会以 "invalid UTF-8" 拒绝解析，
+// 导致取不到任何 GPU 信息。我们只读取产品名、利用率、显存、温度等 ASCII 字段，
+// 所以把非法字节替换掉即可。
+func sanitizeSMIOutput(output []byte) []byte {
+	if utf8.Valid(output) {
+		return output
+	}
+	return []byte(strings.ToValidUTF8(string(output), "\uFFFD"))
 }
 
 func (smi *NvidiaSMI) gatherModel() ([]string, error) {
