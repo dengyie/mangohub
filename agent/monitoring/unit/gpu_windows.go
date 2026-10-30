@@ -4,10 +4,13 @@
 package monitoring
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"os/exec"
-	"strings"
+	"sync"
 	"syscall"
+	"time"
 	"unicode/utf16"
 	"unsafe"
 )
@@ -299,6 +302,15 @@ func GpuName() string {
 	return buildGPUNameList(adapters, nvidiaNames)
 }
 
+// nvidiaSMINameTimeout 限制单次型号查询耗时。这条调用挡在 basicInfo 上报和
+// 建连前的 UpdateBasicInfo 路径上，nvidia-smi 在驱动 TDR / GPU 掉卡时可能长时间
+// 不返回，卡死会让节点整体失联，所以超时后直接退回 DXGI。
+const nvidiaSMINameTimeout = 5 * time.Second
+
+// 查询失败只在首次记一条日志：basicInfo 每 5 分钟（以及每次重连）跑一次，
+// 每轮都打会把没有 NVIDIA 卡的机器日志刷满。
+var nvidiaSMIWarnOnce sync.Once
+
 // nvidiaSMINames 用 --query-gpu 枚举物理卡型号，每张卡一行。
 // 比 -q -x 轻，只给 gpu_name 用；取不到时返回 nil，由 DXGI 结果兜底。
 func nvidiaSMINames() []string {
@@ -307,17 +319,16 @@ func nvidiaSMINames() []string {
 		return nil
 	}
 
-	output, err := exec.Command(binPath, "--query-gpu=name", "--format=csv,noheader").Output()
+	ctx, cancel := context.WithTimeout(context.Background(), nvidiaSMINameTimeout)
+	defer cancel()
+
+	output, err := exec.CommandContext(ctx, binPath, "--query-gpu=name", "--format=csv,noheader").Output()
 	if err != nil {
+		nvidiaSMIWarnOnce.Do(func() {
+			log.Printf("[gpu] nvidia-smi --query-gpu failed, falling back to DXGI: %v", err)
+		})
 		return nil
 	}
 
-	lines := strings.Split(strings.ToValidUTF8(string(output), "\uFFFD"), "\n")
-	names := make([]string, 0, len(lines))
-	for _, line := range lines {
-		if name := strings.TrimSpace(line); name != "" {
-			names = append(names, name)
-		}
-	}
-	return names
+	return parseNvidiaSMINames(output)
 }
