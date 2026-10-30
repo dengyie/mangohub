@@ -9,8 +9,11 @@ import (
 )
 
 const (
-	// 如果超过这个时间没有收到任何消息，则认为连接已死
-	readWait        = 11 * time.Second
+	// 如果超过这个时间没有收到任何消息，则认为连接已死。
+	// 必须明显大于 agent 的上报间隔（--interval，常见 10s）加上 GenerateReport()
+	// 的耗时（开 GPU 监控后要跑 nvidia-smi，1–2s）。此前取 11s 只比 10s 的间隔多
+	// 1s 余量，节点每隔几轮就因读超时被断开，日志刷 close 1006。
+	readWait        = 45 * time.Second
 	postPresenceTTL = 35 * time.Second
 )
 
