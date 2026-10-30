@@ -31,6 +31,15 @@ jobs:
           cd agent
           CGO_ENABLED=0 go build -trimpath -o ../bin/mangohub-agent .
 
+      # Windows 专用文件（//go:build windows）在 linux 上既不编译也不跑测试，
+      # 之前 gpu_windows.go 的改动只能靠本地手动验证。这里补一次交叉编译 + vet，
+      # 至少保证 windows-only 代码能编过、能通过类型检查。
+      - name: Cross-check Agent for Windows
+        run: |
+          cd agent
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go vet ./...
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build ./...
+
       - name: Run Agent Tests
         run: |
           cd agent
