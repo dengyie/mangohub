@@ -5,6 +5,8 @@ package monitoring
 
 import (
 	"fmt"
+	"os/exec"
+	"strings"
 	"syscall"
 	"unicode/utf16"
 	"unsafe"
@@ -278,34 +280,44 @@ func GetGPUs() ([]GPUInfo, error) {
 
 func GpuName() string {
 	gpus, err := GetGPUs()
-	if err != nil {
+
+	adapters := make([]gpuAdapterName, 0, len(gpus))
+	for _, gpu := range gpus {
+		adapters = append(adapters, gpuAdapterName{
+			Name:     gpu.Name,
+			VendorID: gpu.VendorId,
+			LUID:     gpu.LUIDString(),
+			Software: (gpu.Flags & (1 << 1)) != 0, // DXGI_ADAPTER_FLAG_SOFTWARE
+		})
+	}
+
+	nvidiaNames := nvidiaSMINames()
+	if err != nil && len(adapters) == 0 && len(nvidiaNames) == 0 {
 		return "Unknown"
 	}
 
-	type GPUKey struct {
-		LUIDHighPart int32
-		LUIDLowPart  uint32
+	return buildGPUNameList(adapters, nvidiaNames)
+}
+
+// nvidiaSMINames 用 --query-gpu 枚举物理卡型号，每张卡一行。
+// 比 -q -x 轻，只给 gpu_name 用；取不到时返回 nil，由 DXGI 结果兜底。
+func nvidiaSMINames() []string {
+	binPath, err := exec.LookPath("nvidia-smi")
+	if err != nil {
+		return nil
 	}
-	seenGPUs := make(map[GPUKey]struct{})
-	var names []string
 
-	for _, gpu := range gpus {
-		if (gpu.Flags & (1 << 1)) != 0 { // DXGI_ADAPTER_FLAG_SOFTWARE
-			continue
-		}
+	output, err := exec.Command(binPath, "--query-gpu=name", "--format=csv,noheader").Output()
+	if err != nil {
+		return nil
+	}
 
-		key := GPUKey{
-			LUIDHighPart: gpu.LUIDHighPart,
-			LUIDLowPart:  gpu.LUIDLowPart,
-		}
-
-		if _, seen := seenGPUs[key]; !seen {
-			seenGPUs[key] = struct{}{}
-			name := gpu.Name
-			if name != "" {
-				names = append(names, name)
-			}
+	lines := strings.Split(strings.ToValidUTF8(string(output), "\uFFFD"), "\n")
+	names := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if name := strings.TrimSpace(line); name != "" {
+			names = append(names, name)
 		}
 	}
-	return formatGPUNameList(names)
+	return names
 }
